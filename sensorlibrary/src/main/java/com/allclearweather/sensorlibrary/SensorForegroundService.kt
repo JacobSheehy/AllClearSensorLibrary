@@ -38,8 +38,18 @@ class SensorForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        println("onstartcommand of sensorforegroundservice")
+        if(intent?.extras?.get("stop") !=null) {
+            isRunning = false
+            notificationManager?.cancel(1)
+            stopForeground(true)
+            println("onstartcommand stopping running service")
+            this.stopSelf()
+            return START_NOT_STICKY
+        }
 
         if(!isRunning) {
+            println("onstartcommand of sensorforegroundservice, is not yet running")
             var notificationIntent = Intent("com.allclearweather.allclearsensorlibrary.SERVICE_FOREGROUND_NOTIFICATION")
             var pendingIntent = PendingIntent.getActivity(this,  NOTIFICATION_REQUEST_CODE, notificationIntent, 0)
 
@@ -60,8 +70,12 @@ class SensorForegroundService : Service() {
             startForeground(1, notification)
 
         } else {
+            println("onstartcommand of sensorforegroundservice, already running, stop")
             isRunning = false
             notificationManager?.cancel(1)
+            stopForeground(true)
+            this.stopSelf()
+            return START_NOT_STICKY
         }
 
         return START_STICKY
