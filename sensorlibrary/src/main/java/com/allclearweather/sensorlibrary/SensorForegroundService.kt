@@ -198,6 +198,7 @@ class SensorForegroundService : Service() , SensorEventListener {
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setContentIntent(pendingIntent)
                     .setOngoing(true)
+                    .setOnlyAlertOnce(true)
 
 
             var notification = notificationBuilder.build()
@@ -209,24 +210,10 @@ class SensorForegroundService : Service() , SensorEventListener {
         } else {
             println("service already running, not starting foreground")
         }
-
-
-
+        
         checkAndUpdateLocation()
 
         startProcessingSensorData()
-
-        /*
-        } else {
-            println("onstartcommand of sensorforegroundservice, already running, stop")
-            stopProcessingSensorData()
-            isRunning = false
-            notificationManager?.cancel(1)
-            stopForeground(true)
-            this.stopSelf()
-            return START_NOT_STICKY
-        }
-        */
 
         return START_STICKY
     }
