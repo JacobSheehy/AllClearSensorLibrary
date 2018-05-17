@@ -1,5 +1,8 @@
 package com.allclearweather.sensorlibrary.models
 
+/**
+ * Store an individual reading from the humidity sensor
+ */
 class Humidity(time: Long,
                humidity: Double,
                latitude : Double,

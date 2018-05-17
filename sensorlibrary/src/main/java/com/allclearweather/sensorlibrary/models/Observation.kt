@@ -1,5 +1,9 @@
 package com.allclearweather.sensorlibrary.models
 
+/**
+ * Store a single generic sensor observation, assuming the value is a double
+ * (true for the atmosphere sensors)
+ */
 open class Observation constructor(timeRecorded: Long, observation: Double, latitude: Double, longitude: Double) {
 
     var observationVal: Double = observation

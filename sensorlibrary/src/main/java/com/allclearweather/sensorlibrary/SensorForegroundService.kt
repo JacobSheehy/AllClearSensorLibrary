@@ -14,9 +14,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
 import android.os.Build
-import android.os.Handler
 import android.preference.PreferenceManager
-import android.provider.CalendarContract
 import android.support.v4.content.ContextCompat
 import com.allclearweather.sensorlibrary.models.Humidity
 import com.allclearweather.sensorlibrary.models.Pressure
@@ -26,16 +24,18 @@ import com.allclearweather.sensorlibrary.util.WeatherUnits
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import java.text.DecimalFormat
-import java.util.*
 import kotlin.collections.ArrayList
 
-
+/**
+ * This is a foreground service that accesses sensors and location
+ * to log local environmental sensor data on Android devices
+ */
 class SensorForegroundService : Service() , SensorEventListener {
 
     private var notificationManager: NotificationManager? = null
     private var isRunning = false
 
-    private val NOTIFICATION_REQUEST_CODE = 1000
+    private val notificationRequestCode = 1000
 
     private val channelName = "CHANNEL_ALLCLEAR"
 
@@ -47,7 +47,6 @@ class SensorForegroundService : Service() , SensorEventListener {
     private var mPressure: Sensor? = null
     private var mHumidity: Sensor? = null
     private var mTemperature: Sensor? = null
-
 
     private var pressureValues : ArrayList<Pressure> = ArrayList()
     private var temperatureValues : ArrayList<Temperature> = ArrayList()
@@ -81,7 +80,6 @@ class SensorForegroundService : Service() , SensorEventListener {
         humidityValues = ArrayList()
 
         setPrefs()
-
 
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmPending =  PendingIntent.getBroadcast(
@@ -124,8 +122,6 @@ class SensorForegroundService : Service() , SensorEventListener {
         temperaturePref = preferences!!.getString("tempPref","c")
         pressurePref = preferences!!.getString("prefPressure","mb")
         sensorsActive = preferences!!.getBoolean("sensorsActive", false)
-
-
     }
 
     override fun onDestroy() {
@@ -160,7 +156,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
         println("onstartcommand of sensorforegroundservice, is running? $isRunning")
         var notificationIntent = Intent("com.allclearweather.allclearsensorlibrary.SERVICE_FOREGROUND_NOTIFICATION")
-        var pendingIntent = PendingIntent.getActivity(this,  NOTIFICATION_REQUEST_CODE, notificationIntent, 0)
+        var pendingIntent = PendingIntent.getActivity(this,  notificationRequestCode, notificationIntent, 0)
 
         var messageContent = ""
 
