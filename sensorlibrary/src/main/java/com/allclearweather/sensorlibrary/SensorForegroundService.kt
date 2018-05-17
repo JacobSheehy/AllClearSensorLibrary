@@ -17,6 +17,7 @@ import android.os.Build
 import android.preference.PreferenceManager
 import android.support.v4.content.ContextCompat
 import com.allclearweather.sensorlibrary.models.Humidity
+import com.allclearweather.sensorlibrary.models.Light
 import com.allclearweather.sensorlibrary.models.Pressure
 import com.allclearweather.sensorlibrary.models.Temperature
 import com.allclearweather.sensorlibrary.util.FileUtil
@@ -42,15 +43,18 @@ class SensorForegroundService : Service() , SensorEventListener {
     private var hasBarometer = false
     private var hasHumiditySensor = false
     private var hasTemperatureSensor = false
+    private var hasLightSensor = false
 
     private lateinit var mSensorManager: SensorManager
     private var mPressure: Sensor? = null
     private var mHumidity: Sensor? = null
     private var mTemperature: Sensor? = null
+    private var mLight: Sensor? = null
 
     private var pressureValues : ArrayList<Pressure> = ArrayList()
     private var temperatureValues : ArrayList<Temperature> = ArrayList()
     private var humidityValues : ArrayList<Humidity> = ArrayList()
+    private var lightValues : ArrayList<Light> = ArrayList()
 
     private var pressurePref = "mb"
     private var temperaturePref = "c"
@@ -78,6 +82,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         temperatureValues = ArrayList()
         pressureValues = ArrayList()
         humidityValues = ArrayList()
+        lightValues = ArrayList()
 
         setPrefs()
 
@@ -147,8 +152,50 @@ class SensorForegroundService : Service() , SensorEventListener {
             sharingIntent.type = "text/plain"
             sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Pressure Data")
             sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(Intent.createChooser(sharingIntent, "View Pressure Data (.csv)"))
+            this.stopSelf()
+            return START_NOT_STICKY
         }
+
+        if(intent?.extras?.get("viewHumidityData") !=null)  {
+            val fileContents = FileUtil.readFile(applicationContext, "humidity.csv")
+            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+            sharingIntent.type = "text/plain"
+            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Humidity Data")
+            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+
+            startActivity(Intent.createChooser(sharingIntent, "View Humidity Data (.csv)"))
+            this.stopSelf()
+            return START_NOT_STICKY
+        }
+
+        if(intent?.extras?.get("viewTemperatureData") !=null)  {
+            val fileContents = FileUtil.readFile(applicationContext, "temperature.csv")
+            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+            sharingIntent.type = "text/plain"
+            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Temperature Data")
+            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(Intent.createChooser(sharingIntent, "View Temperature Data (.csv)"))
+            this.stopSelf()
+            return START_NOT_STICKY
+        }
+
+
+        if(intent?.extras?.get("viewLightData") !=null)  {
+            val fileContents = FileUtil.readFile(applicationContext, "light.csv")
+            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+            sharingIntent.type = "text/plain"
+            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Light Data")
+            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(Intent.createChooser(sharingIntent, "View Temperature Light (.csv)"))
+            this.stopSelf()
+            return START_NOT_STICKY
+        }
+
 
 
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -190,6 +237,14 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
             messageContent += df.format(WeatherUnits.convertMbToHg(temperatureValues[0].observationVal)) + " %"
             println("adding humidity data to message content")
+        }
+
+        messageContent+="\n"
+
+        if(lightValues.size>0) {
+            var df = DecimalFormat("##.##")
+            messageContent += df.format(lightValues[0].observationVal) + " lx"
+            println("adding light data to message content")
         }
 
 
@@ -241,9 +296,14 @@ class SensorForegroundService : Service() , SensorEventListener {
             }
             event?.sensor?.type==Sensor.TYPE_PRESSURE -> {
                 recordPressureValues(event)
-                stopPressureListener(true)
+                stopPressureListener()
+            }
+            event?.sensor?.type==Sensor.TYPE_LIGHT-> {
+                recordLightValues(event)
+                stopLightListener()
             }
         }
+        restartSelf()
     }
 
     private fun restartSelf() {
@@ -259,7 +319,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val eventVal = event.values[0]
         val newHumidity = Humidity(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newHumidity.toCSV() + "\n"
-
+        humidityValues.add(newHumidity)
         FileUtil.saveFile(applicationContext, "humidity.csv",newData)
     }
 
@@ -268,6 +328,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newPressure = Pressure(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newPressure.toCSV() + "\n"
         println("pressure data: $newData")
+        pressureValues.add(newPressure)
         FileUtil.saveFile(applicationContext, "pressure.csv",newData)
     }
 
@@ -275,21 +336,43 @@ class SensorForegroundService : Service() , SensorEventListener {
         val eventVal = event.values[0]
         val newTemperature = Temperature(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newTemperature.toCSV() + "\n"
-
+        temperatureValues.add(newTemperature)
         FileUtil.saveFile(applicationContext, "temperature.csv",newData)
+    }
+
+
+    private fun recordLightValues(event: SensorEvent) {
+        val eventVal = event.values[0]
+        val newLight = Light(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
+        val newData = newLight.toCSV() + "\n"
+        lightValues.add(newLight)
+        FileUtil.saveFile(applicationContext, "light.csv",newData)
     }
 
 
     private fun startProcessingSensorData() {
         println("start processing sensor data")
         val manager = packageManager
-        hasBarometer = manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_BAROMETER)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            hasBarometer = manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_BAROMETER)
             hasHumiditySensor = manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_RELATIVE_HUMIDITY)
             hasTemperatureSensor = manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_AMBIENT_TEMPERATURE)
+            hasLightSensor = manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_LIGHT)
+        } else {
+            val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            var humid = sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY)
+
+            hasHumiditySensor = humid != null
+
+            var temp = sensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
+            hasTemperatureSensor = temp != null
+
+            var pressure = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
+            hasBarometer = pressure != null
+
+            var light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+            hasLightSensor = light != null
         }
-
-
 
         mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
@@ -307,7 +390,18 @@ class SensorForegroundService : Service() , SensorEventListener {
             mTemperature = mSensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
             startTemperatureListener()
         }
+
+        if(hasLightSensor) {
+            mLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+            startLightListener()
+        }
     }
+
+    private fun startLightListener() {
+        println("startlightsensor")
+        mSensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
 
     private fun startHumidityListener() {
         println("starthumiditysensor")
@@ -326,9 +420,13 @@ class SensorForegroundService : Service() , SensorEventListener {
 
     private fun stopProcessingSensorData() {
         stopTemperatureListener()
-        stopPressureListener(false)
+        stopPressureListener()
         stopHumidityListener()
+        stopLightListener()
+    }
 
+    fun stopLightListener() {
+        mSensorManager.unregisterListener(this, mLight)
     }
 
     fun stopHumidityListener() {
@@ -339,16 +437,8 @@ class SensorForegroundService : Service() , SensorEventListener {
         mSensorManager.unregisterListener(this, mTemperature)
     }
 
-    fun stopPressureListener(startAgain : Boolean) {
+    fun stopPressureListener() {
         mSensorManager.unregisterListener(this, mPressure)
-
-        if(startAgain) {
-            println("stopping pressure listener; starting again in a minute")
-            restartSelf()
-        } else {
-            println("stopping pressure listener, not starting again")
-        }
-
     }
 
 
