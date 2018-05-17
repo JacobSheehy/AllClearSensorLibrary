@@ -145,6 +145,15 @@ class SensorForegroundService : Service() , SensorEventListener {
             return START_NOT_STICKY
         }
 
+        if(intent?.extras?.get("viewPressureData") !=null)  {
+            val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
+            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+            sharingIntent.type = "text/plain"
+            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Pressure Data")
+            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+            startActivity(Intent.createChooser(sharingIntent, "View Pressure Data (.csv)"))
+        }
+
 
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(alarmPending)
@@ -210,7 +219,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         } else {
             println("service already running, not starting foreground")
         }
-        
+
         checkAndUpdateLocation()
 
         startProcessingSensorData()
@@ -251,25 +260,25 @@ class SensorForegroundService : Service() , SensorEventListener {
 
 
     private fun recordHumidityValues(event: SensorEvent) {
-        var eventVal = event.values[0]
-        var newHumidity = Humidity(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
-        var newData = newHumidity.toCSV() + "\n"
+        val eventVal = event.values[0]
+        val newHumidity = Humidity(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
+        val newData = newHumidity.toCSV() + "\n"
 
         FileUtil.saveFile(applicationContext, "humidity.csv",newData)
     }
 
     private fun recordPressureValues(event: SensorEvent) {
-        var eventVal = event.values[0]
-        var newPressure = Pressure(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
-        var newData = newPressure.toCSV() + "\n"
+        val eventVal = event.values[0]
+        val newPressure = Pressure(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
+        val newData = newPressure.toCSV() + "\n"
         println("pressure data: $newData")
         FileUtil.saveFile(applicationContext, "pressure.csv",newData)
     }
 
     private fun recordTemperatureValues(event: SensorEvent) {
-        var eventVal = event.values[0]
-        var newTemperature = Temperature(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
-        var newData = newTemperature.toCSV() + "\n"
+        val eventVal = event.values[0]
+        val newTemperature = Temperature(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
+        val newData = newTemperature.toCSV() + "\n"
 
         FileUtil.saveFile(applicationContext, "temperature.csv",newData)
     }
