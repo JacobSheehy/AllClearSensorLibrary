@@ -154,7 +154,6 @@ class SensorForegroundService : Service() , SensorEventListener {
             sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
             sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(Intent.createChooser(sharingIntent, "View Pressure Data (.csv)"))
-            this.stopSelf()
             return START_NOT_STICKY
         }
 
@@ -167,7 +166,6 @@ class SensorForegroundService : Service() , SensorEventListener {
             sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
 
             startActivity(Intent.createChooser(sharingIntent, "View Humidity Data (.csv)"))
-            this.stopSelf()
             return START_NOT_STICKY
         }
 
@@ -179,7 +177,6 @@ class SensorForegroundService : Service() , SensorEventListener {
             sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
             sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(Intent.createChooser(sharingIntent, "View Temperature Data (.csv)"))
-            this.stopSelf()
             return START_NOT_STICKY
         }
 
@@ -192,7 +189,6 @@ class SensorForegroundService : Service() , SensorEventListener {
             sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
             sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(Intent.createChooser(sharingIntent, "View Temperature Light (.csv)"))
-            this.stopSelf()
             return START_NOT_STICKY
         }
 
