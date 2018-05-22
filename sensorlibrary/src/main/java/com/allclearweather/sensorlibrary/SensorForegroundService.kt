@@ -58,6 +58,9 @@ class SensorForegroundService : Service() , SensorEventListener {
     private var humidityValues : ArrayList<Humidity> = ArrayList()
     private var lightValues : ArrayList<Light> = ArrayList()
 
+    var notificationBuilder : NotificationCompat.Builder? = null
+    var notification : Notification? = null
+
     private var pressurePref = "mb"
     private var temperaturePref = "c"
 
@@ -205,7 +208,8 @@ class SensorForegroundService : Service() , SensorEventListener {
 
         println("onstartcommand of sensorforegroundservice, is running? $isRunning")
         var notificationIntent = Intent("com.allclearweather.allclearsensorlibrary.SERVICE_FOREGROUND_NOTIFICATION")
-        var pendingIntent = PendingIntent.getActivity(this,  notificationRequestCode, notificationIntent, 0)
+        notificationIntent.putExtra("fromSensorNotification",true)
+        var pendingIntent = PendingIntent.getBroadcast(this,  notificationRequestCode, notificationIntent, 0)
 
         var messageContent = ""
 
@@ -213,65 +217,68 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
 
             if(pressurePref == "mb") {
-                messageContent += "${pressureValues[0].observationVal}" + " mb"
+                var pressureVar = pressureValues[0].observationVal
+                messageContent = messageContent.plus(df.format(pressureVar) + " mb")
             } else if (pressurePref == "hg") {
-                messageContent += df.format(WeatherUnits.convertMbToHg(pressureValues[0].observationVal)) + " hg"
+                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(pressureValues[0].observationVal)) + " hg")
             }
             println("adding pressure data to message content")
         }
 
-        messageContent+="\n"
+        messageContent = messageContent.plus("\n")
 
         if(temperatureValues.size>0) {
             var df = DecimalFormat("##.##")
 
             if(temperaturePref == "c") {
-                messageContent += "${temperatureValues[0].observationVal}" + " °C"
+                var temperatureVar = temperatureValues[0].observationVal
+                messageContent = messageContent.plus(df.format(temperatureVar) + " °C")
             } else if (pressurePref == "f") {
-                messageContent += df.format(WeatherUnits.convertMbToHg(temperatureValues[0].observationVal)) + " °F"
+                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(temperatureValues[0].observationVal)) + " °F")
             }
             println("adding temperature data to message content")
         }
 
-        messageContent+="\n"
+        messageContent = messageContent.plus("\n")
 
         if(humidityValues.size>0) {
             var df = DecimalFormat("##.##")
-            messageContent += df.format(WeatherUnits.convertMbToHg(temperatureValues[0].observationVal)) + " %"
+            messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(temperatureValues[0].observationVal)) + " %")
             println("adding humidity data to message content")
         }
 
-        messageContent+="\n"
+        messageContent = messageContent.plus("\n")
 
         if(lightValues.size>0) {
             var df = DecimalFormat("##.##")
-            messageContent += df.format(lightValues[0].observationVal) + " lx"
+            messageContent = messageContent.plus(df.format(lightValues[0].observationVal) + " lx")
             println("adding light data to message content")
         }
 
 
-        if(!isRunning) {
-            println("not running, starting foreground")
+        println("isRunning=$isRunning, starting foreground, messagedata = $messageContent")
 
-            var notificationBuilder = NotificationCompat.Builder(this, channelName)
-                    .setSmallIcon(R.drawable.partlycloudy)
-                    .setContentText(messageContent)
-                    .setContentTitle("All Clear sensor data")
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .setContentIntent(pendingIntent)
-                    .setOngoing(true)
-                    .setOnlyAlertOnce(true)
-
-
-            var notification = notificationBuilder.build()
-            notificationManager?.notify(1, notification)
-
-
-            startForeground(1, notification)
-            isRunning = true
-        } else {
-            println("service already running, not starting foreground")
+        if(messageContent.trim() == ""){
+            messageContent = "Gathering data, check back soon!"
         }
+
+        notificationBuilder = NotificationCompat.Builder(this, channelName)
+                .setSmallIcon(R.drawable.partlycloudy)
+                .setContentText(messageContent)
+                .setContentTitle("All Clear sensor data")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+
+
+
+        notification = notificationBuilder?.build()
+        notificationManager?.notify(1, notification)
+
+
+        startForeground(1, notification)
+        isRunning = true
 
         checkAndUpdateLocation()
 
