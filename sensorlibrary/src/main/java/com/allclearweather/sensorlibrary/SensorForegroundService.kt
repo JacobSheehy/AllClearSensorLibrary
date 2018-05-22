@@ -14,6 +14,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
 import android.os.Build
+import android.os.Handler
 import android.preference.PreferenceManager
 import android.support.v4.content.ContextCompat
 import com.allclearweather.sensorlibrary.models.Humidity
@@ -25,6 +26,7 @@ import com.allclearweather.sensorlibrary.util.WeatherUnits
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import java.text.DecimalFormat
+import java.util.*
 import kotlin.collections.ArrayList
 
 /**
@@ -141,7 +143,11 @@ class SensorForegroundService : Service() , SensorEventListener {
             isRunning = false
             notificationManager?.cancel(1)
             stopForeground(true)
-            println("onstartcommand stopping running service")
+            println("onstartcommand stopping running service sensorsactive: $sensorsActive, stop= " + intent?.extras?.get("stop"))
+
+            editor = preferences?.edit()
+            editor?.putBoolean("sensorsActive", false)
+            editor?.apply()
             this.stopSelf()
             return START_NOT_STICKY
         }
@@ -207,7 +213,7 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
 
             if(pressurePref == "mb") {
-                messageContent += pressureValues[0].observationVal as String + " mb"
+                messageContent += "${pressureValues[0].observationVal}" + " mb"
             } else if (pressurePref == "hg") {
                 messageContent += df.format(WeatherUnits.convertMbToHg(pressureValues[0].observationVal)) + " hg"
             }
@@ -220,7 +226,7 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
 
             if(temperaturePref == "c") {
-                messageContent += temperatureValues[0].observationVal as String + " °C"
+                messageContent += "${temperatureValues[0].observationVal}" + " °C"
             } else if (pressurePref == "f") {
                 messageContent += df.format(WeatherUnits.convertMbToHg(temperatureValues[0].observationVal)) + " °F"
             }
@@ -271,6 +277,8 @@ class SensorForegroundService : Service() , SensorEventListener {
 
         startProcessingSensorData()
 
+
+
         return START_STICKY
     }
 
@@ -299,7 +307,6 @@ class SensorForegroundService : Service() , SensorEventListener {
                 stopLightListener()
             }
         }
-        restartSelf()
     }
 
     private fun restartSelf() {
@@ -391,6 +398,16 @@ class SensorForegroundService : Service() , SensorEventListener {
             mLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
             startLightListener()
         }
+
+        restartSelfDelayed()
+    }
+
+
+    private fun restartSelfDelayed() {
+        Handler().postDelayed({
+            //doSomethingHere()
+            restartSelf()
+        }, 3000)
     }
 
     private fun startLightListener() {

@@ -11,7 +11,6 @@ class StartDataReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         println("startdatareceiver onreceive, starting service")
         val newIntent = Intent(context, SensorForegroundService::class.java)
-        newIntent.putExtra("stop","")
         context?.startService(newIntent)
     }
 
