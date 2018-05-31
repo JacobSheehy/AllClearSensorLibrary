@@ -217,13 +217,10 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
 
             if(pressurePref == "mb") {
-                var pressureVar = pressureValues[0].observationVal
+                var pressureVar = pressureValues[pressureValues.size-1].observationVal
                 messageContent = messageContent.plus(df.format(pressureVar) + " mb")
             } else if (pressurePref == "hg") {
-                if(pressureValues.size>0) {
-                    messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(pressureValues[0].observationVal)) + " hg")
-                }
-
+                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(pressureValues[pressureValues.size-1].observationVal)) + " hg")
             }
             println("adding pressure data to message content")
         }
@@ -234,12 +231,10 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
 
             if(temperaturePref == "c") {
-                var temperatureVar = temperatureValues[0].observationVal
+                var temperatureVar = temperatureValues[temperatureValues.size-1].observationVal
                 messageContent = messageContent.plus(df.format(temperatureVar) + " °C")
             } else if (pressurePref == "f") {
-                if(temperatureValues.size>0) {
-                    messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(temperatureValues[0].observationVal)) + " °F")
-                }
+                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(temperatureValues[temperatureValues.size-1].observationVal)) + " °F")
 
             }
             println("adding temperature data to message content")
@@ -249,9 +244,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
         if(humidityValues.size>0) {
             var df = DecimalFormat("##.##")
-            if(humidityValues.size>0) {
-                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(humidityValues[0].observationVal)) + " %")
-            }
+            messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(humidityValues[humidityValues.size-1].observationVal)) + " %")
 
             println("adding humidity data to message content")
         }
@@ -260,9 +253,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
         if(lightValues.size>0) {
             var df = DecimalFormat("##.##")
-            if(lightValues.size>0) {
-                messageContent = messageContent.plus(df.format(lightValues[0].observationVal) + " lx")
-            }
+            messageContent = messageContent.plus(df.format(lightValues[lightValues.size-1].observationVal) + " lx")
 
             println("adding light data to message content")
         }
