@@ -9,4 +9,4 @@ class Temperature(time: Long,
                   longitude: Double): Observation(timeRecorded = time,
         observation = temperature,
         latitude = latitude,
-        longitude = longitude) 
+        longitude = longitude)

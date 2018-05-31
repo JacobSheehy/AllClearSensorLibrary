@@ -155,6 +155,17 @@ class SensorForegroundService : Service() , SensorEventListener {
             return START_NOT_STICKY
         }
 
+
+
+        if(intent?.extras?.get("getPressureData") !=null)  {
+            println("getPressureData")
+            val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
+            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+            sendDataIntent.putExtra("dataSetPressure", fileContents)
+            sendBroadcast(sendDataIntent)
+            return START_NOT_STICKY
+        }
+
         if(intent?.extras?.get("viewPressureData") !=null)  {
             val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
             val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
