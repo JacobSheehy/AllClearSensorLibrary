@@ -166,6 +166,38 @@ class SensorForegroundService : Service() , SensorEventListener {
             return START_NOT_STICKY
         }
 
+
+
+        if(intent?.extras?.get("getTemperatureData") !=null)  {
+            println("getTemperatureData")
+            val fileContents = FileUtil.readFile(applicationContext, "temperature.csv")
+            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+            sendDataIntent.putExtra("dataSetTemperature", fileContents)
+            sendBroadcast(sendDataIntent)
+            return START_NOT_STICKY
+        }
+
+
+
+        if(intent?.extras?.get("getHumidityData") !=null)  {
+            println("getHumidityData")
+            val fileContents = FileUtil.readFile(applicationContext, "humidity.csv")
+            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+            sendDataIntent.putExtra("dataSetHumidity", fileContents)
+            sendBroadcast(sendDataIntent)
+            return START_NOT_STICKY
+        }
+
+
+        if(intent?.extras?.get("getLightData") !=null)  {
+            println("getLightData")
+            val fileContents = FileUtil.readFile(applicationContext, "light.csv")
+            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+            sendDataIntent.putExtra("dataSetLight", fileContents)
+            sendBroadcast(sendDataIntent)
+            return START_NOT_STICKY
+        }
+
         if(intent?.extras?.get("viewPressureData") !=null)  {
             val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
             val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
