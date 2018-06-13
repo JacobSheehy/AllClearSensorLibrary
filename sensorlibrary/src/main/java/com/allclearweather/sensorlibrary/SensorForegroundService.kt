@@ -363,10 +363,10 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     private fun restartSelf() {
-        println("restarting service in 5m delay")
+        println("restarting sensor service in 1m delay")
         alarmManager.set(
                 AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis()+(1000*60*5),
+                System.currentTimeMillis()+(1000*60),
                 alarmPending)
     }
 
