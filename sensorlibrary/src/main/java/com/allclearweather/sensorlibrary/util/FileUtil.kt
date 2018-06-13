@@ -29,7 +29,7 @@ class FileUtil {
             if(sensorData.size>100) {
                 sensorData = sensorData.subList(Math.min(10, sensorData.size), sensorData.size)
                 for (sensorD in sensorData) {
-                    newFile = "$newFile\n$sensorD"
+                    newFile = "$newFile$sensorD\n"
                 }
                 saveFileOverwrite(context, fileName, newFile)
             }
