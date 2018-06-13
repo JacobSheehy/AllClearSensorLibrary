@@ -363,10 +363,10 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     private fun restartSelf() {
-        println("restarting service in 30s delay")
+        println("restarting service in 5m delay")
         alarmManager.set(
                 AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis()+(1000*30),
+                System.currentTimeMillis()+(1000*60*5),
                 alarmPending)
     }
 
@@ -376,6 +376,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newHumidity = Humidity(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newHumidity.toCSV() + "\n"
         humidityValues.add(newHumidity)
+        FileUtil.cleanOldFile(applicationContext, "humidity.csv")
         FileUtil.saveFile(applicationContext, "humidity.csv",newData)
     }
 
@@ -385,6 +386,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newData = newPressure.toCSV() + "\n"
         println("pressure data: $newData")
         pressureValues.add(newPressure)
+        FileUtil.cleanOldFile(applicationContext, "pressure.csv")
         FileUtil.saveFile(applicationContext, "pressure.csv",newData)
     }
 
@@ -393,6 +395,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newTemperature = Temperature(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newTemperature.toCSV() + "\n"
         temperatureValues.add(newTemperature)
+        FileUtil.cleanOldFile(applicationContext, "temperature.csv")
         FileUtil.saveFile(applicationContext, "temperature.csv",newData)
     }
 
@@ -402,6 +405,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newLight = Light(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newLight.toCSV() + "\n"
         lightValues.add(newLight)
+        FileUtil.cleanOldFile(applicationContext, "light.csv")
         FileUtil.saveFile(applicationContext, "light.csv",newData)
     }
 
