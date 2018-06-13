@@ -1,6 +1,7 @@
 package com.allclearweather.sensorlibrary.util
 
 import android.content.Context
+import java.io.File
 
 /**
  * Save and read files to store simple csv atmosphere data. Files are private to the app
@@ -17,24 +18,21 @@ class FileUtil {
 
         fun cleanOldFile(context: Context, fileName: String) {
             if(!fileExists(context, fileName)) {
-                println("$fileName does not exist for cleanFile")
+                println("$fileName does not exist for cleanOldFile")
                 return
             }
-            val fileContents = FileUtil.readFile(context, fileName)
-            var sensorData = fileContents.split("\n".toRegex())
 
-            println("cleanOldFile starting on $fileName with ${sensorData.size} items")
+            var newFile = ""
+            val fileContents = readFile(context, fileName)
+            var sensorData = fileContents.lines()
 
             if(sensorData.size>100) {
                 sensorData = sensorData.subList(Math.min(10, sensorData.size), sensorData.size)
+                for (sensorD in sensorData) {
+                    newFile = "$newFile\n$sensorD"
+                }
+                saveFileOverwrite(context, fileName, newFile)
             }
-
-            println("cleanOldFile cut down to ${sensorData.size} items")
-
-            var newFile = sensorData.joinToString { "\n" }
-
-
-            saveFileOverwrite(context, fileName, newFile)
         }
 
         fun saveFile(context: Context, fileName: String, fileContents: String) {
