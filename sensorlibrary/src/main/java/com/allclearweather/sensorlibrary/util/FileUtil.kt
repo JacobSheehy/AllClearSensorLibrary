@@ -11,6 +11,8 @@ class FileUtil {
 
     companion object {
 
+        val measurementBufferMax = 300
+
         fun fileExists(context: Context, filename: String): Boolean {
             val file = context.getFileStreamPath(filename)
             return !(file == null || !file.exists())
@@ -26,10 +28,12 @@ class FileUtil {
             val fileContents = readFile(context, fileName)
             var sensorData = fileContents.lines()
 
-            if(sensorData.size>100) {
+            if(sensorData.size> measurementBufferMax) {
                 sensorData = sensorData.subList(Math.min(10, sensorData.size), sensorData.size)
                 for (sensorD in sensorData) {
-                    newFile = "$newFile$sensorD\n"
+                    if(sensorD.length>2) {
+                        newFile = "$newFile$sensorD\n"
+                    }
                 }
                 saveFileOverwrite(context, fileName, newFile)
             }
