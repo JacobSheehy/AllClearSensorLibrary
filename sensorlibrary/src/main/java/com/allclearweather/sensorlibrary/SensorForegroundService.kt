@@ -38,9 +38,9 @@ class SensorForegroundService : Service() , SensorEventListener {
     private var notificationManager: NotificationManager? = null
     private var isRunning = false
 
-    private val notificationRequestCode = 1000
+    private val notificationRequestCode = 0
 
-    private val channelName = "CHANNEL_ALLCLEAR"
+    private val channelName = "All Clear - Sensor Data"
 
     private var hasBarometer = false
     private var hasHumiditySensor = false
@@ -250,9 +250,20 @@ class SensorForegroundService : Service() , SensorEventListener {
         alarmManager.cancel(alarmPending)
 
         println("onstartcommand of sensorforegroundservice, is running? $isRunning")
-        var notificationIntent = Intent("com.allclearweather.allclearsensorlibrary.SERVICE_FOREGROUND_NOTIFICATION")
-        notificationIntent.putExtra("fromSensorNotification",true)
-        var pendingIntent = PendingIntent.getBroadcast(this,  notificationRequestCode, notificationIntent, 0)
+        //var notificationIntent = Intent("com.allclearweather.allclearsensorlibrary")
+
+        val receiverAction = applicationContext.packageName + ".SERVICE_FOREGROUND_NOTIFICATION"
+        println("sensorforegroundservice receiveraction=$receiverAction")
+        // No need for Class definition in the constructor.
+        val intent = Intent()
+        // Set the unique action.
+        intent.action = receiverAction
+        // Set the application package name on the Intent, so only the application
+        // will have this Intent broadcasted, thus making it “explicit" and secure.
+        intent.`package` = applicationContext.packageName
+
+        intent.putExtra("fromSensorNotification",true)
+        var pendingIntent = PendingIntent.getBroadcast(this,  notificationRequestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT)
 
         var messageContent = ""
 
@@ -521,7 +532,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         // the NotificationChannel class is new and not in the support library
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = channelName
-            val description = "ChannelDescription"
+            val description = "This is the persistent notification for All Clear to collect environmental sensor data for research and forecasting purposes."
             val importance = NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel(channelName, name, importance)
             channel.description = description
