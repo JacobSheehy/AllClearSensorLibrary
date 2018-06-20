@@ -20,7 +20,7 @@ class FileUtil {
 
         fun cleanOldFile(context: Context, fileName: String) {
             if(!fileExists(context, fileName)) {
-                println("$fileName does not exist for cleanOldFile")
+                InternalConfig.log("$fileName does not exist for cleanOldFile")
                 return
             }
 

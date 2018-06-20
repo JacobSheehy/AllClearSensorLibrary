@@ -111,15 +111,15 @@ class SensorForegroundService : Service() , SensorEventListener {
     private fun checkAndUpdateLocation() {
         if (ContextCompat.checkSelfPermission(this,
                         Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            println("sensorforegroundservice checking location")
+            InternalConfig.log("sensorforegroundservice checking location")
             fusedLocationClient.lastLocation
                     .addOnSuccessListener { location: Location? ->
                         if (location != null) {
                             latitude = location.latitude
                             longitude = location.longitude
-                            println("sensorforegroundservice got location $latitude")
+                            InternalConfig.log("sensorforegroundservice got location $latitude")
                         } else {
-                            println("sensorforegroundservice null location")
+                            InternalConfig.log("sensorforegroundservice null location")
                         }
                     }
         }
@@ -140,13 +140,13 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        println("onstartcommand of sensorforegroundservice")
+        InternalConfig.log("onstartcommand of sensorforegroundservice")
         sensorsActive = preferences!!.getBoolean("sensorsActive", false)
         if((intent?.extras?.get("stop") !=null) || (!sensorsActive))  {
             isRunning = false
             notificationManager?.cancel(1)
             stopForeground(true)
-            println("onstartcommand stopping running service sensorsactive: $sensorsActive, stop= " + intent?.extras?.get("stop"))
+            InternalConfig.log("onstartcommand stopping running service sensorsactive: $sensorsActive, stop= " + intent?.extras?.get("stop"))
 
             editor = preferences?.edit()
             editor?.putBoolean("sensorsActive", false)
@@ -158,7 +158,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
 
         if(intent?.extras?.get("getPressureData") !=null)  {
-            println("getPressureData")
+            InternalConfig.log("getPressureData")
             val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
             val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
             sendDataIntent.putExtra("dataSetPressure", fileContents)
@@ -169,7 +169,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
 
         if(intent?.extras?.get("getTemperatureData") !=null)  {
-            println("getTemperatureData")
+            InternalConfig.log("getTemperatureData")
             val fileContents = FileUtil.readFile(applicationContext, "temperature.csv")
             val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
             sendDataIntent.putExtra("dataSetTemperature", fileContents)
@@ -180,7 +180,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
 
         if(intent?.extras?.get("getHumidityData") !=null)  {
-            println("getHumidityData")
+            InternalConfig.log("getHumidityData")
             val fileContents = FileUtil.readFile(applicationContext, "humidity.csv")
             val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
             sendDataIntent.putExtra("dataSetHumidity", fileContents)
@@ -190,7 +190,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
 
         if(intent?.extras?.get("getLightData") !=null)  {
-            println("getLightData")
+            InternalConfig.log("getLightData")
             val fileContents = FileUtil.readFile(applicationContext, "light.csv")
             val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
             sendDataIntent.putExtra("dataSetLight", fileContents)
@@ -249,11 +249,11 @@ class SensorForegroundService : Service() , SensorEventListener {
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(alarmPending)
 
-        println("onstartcommand of sensorforegroundservice, is running? $isRunning")
+        InternalConfig.log("onstartcommand of sensorforegroundservice, is running? $isRunning")
         //var notificationIntent = Intent("com.allclearweather.allclearsensorlibrary")
 
         val receiverAction = applicationContext.packageName + ".SERVICE_FOREGROUND_NOTIFICATION"
-        println("sensorforegroundservice receiveraction=$receiverAction")
+        InternalConfig.log("sensorforegroundservice receiveraction=$receiverAction")
         // No need for Class definition in the constructor.
         val intent = Intent()
         // Set the unique action.
@@ -276,7 +276,7 @@ class SensorForegroundService : Service() , SensorEventListener {
             } else if (pressurePref == "hg") {
                 messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(pressureValues[pressureValues.size-1].observationVal)) + " hg")
             }
-            println("adding pressure data to message content")
+            InternalConfig.log("adding pressure data to message content")
         }
 
         messageContent = messageContent.plus("\n")
@@ -291,7 +291,7 @@ class SensorForegroundService : Service() , SensorEventListener {
                 messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(temperatureValues[temperatureValues.size-1].observationVal)) + " °F")
 
             }
-            println("adding temperature data to message content")
+            InternalConfig.log("adding temperature data to message content")
         }
 
         messageContent = messageContent.plus("\n")
@@ -300,7 +300,7 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
             messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(humidityValues[humidityValues.size-1].observationVal)) + " %")
 
-            println("adding humidity data to message content")
+            InternalConfig.log("adding humidity data to message content")
         }
 
         messageContent = messageContent.plus("\n")
@@ -309,11 +309,11 @@ class SensorForegroundService : Service() , SensorEventListener {
             var df = DecimalFormat("##.##")
             messageContent = messageContent.plus(df.format(lightValues[lightValues.size-1].observationVal) + " lx")
 
-            println("adding light data to message content")
+            InternalConfig.log("adding light data to message content")
         }
 
 
-        println("isRunning=$isRunning, starting foreground, messagedata = $messageContent")
+        InternalConfig.log("isRunning=$isRunning, starting foreground, messagedata = $messageContent")
 
         if(messageContent.trim() == ""){
             messageContent = "Gathering data, check back soon!"
@@ -374,7 +374,7 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     private fun restartSelf() {
-        println("restarting sensor service in 1m delay")
+        InternalConfig.log("restarting sensor service in 1m delay")
         alarmManager.set(
                 AlarmManager.RTC_WAKEUP,
                 System.currentTimeMillis()+(1000*60),
@@ -395,7 +395,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val eventVal = event.values[0]
         val newPressure = Pressure(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newPressure.toCSV() + "\n"
-        println("pressure data: $newData")
+        InternalConfig.log("pressure data: $newData")
         pressureValues.add(newPressure)
         FileUtil.cleanOldFile(applicationContext, "pressure.csv")
         FileUtil.saveFile(applicationContext, "pressure.csv",newData)
@@ -422,7 +422,7 @@ class SensorForegroundService : Service() , SensorEventListener {
 
 
     private fun startProcessingSensorData() {
-        println("start processing sensor data")
+        InternalConfig.log("start processing sensor data")
         val manager = packageManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             hasBarometer = manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_BAROMETER)
@@ -479,23 +479,23 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     private fun startLightListener() {
-        println("startlightsensor")
+        InternalConfig.log("startlightsensor")
         mSensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
 
     private fun startHumidityListener() {
-        println("starthumiditysensor")
+        InternalConfig.log("starthumiditysensor")
         mSensorManager.registerListener(this, mHumidity, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     private fun startPressureListener() {
-        println("startpressuresensor")
+        InternalConfig.log("startpressuresensor")
         mSensorManager.registerListener(this, mPressure, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     private fun startTemperatureListener() {
-        println("starttemperaturesensor")
+        InternalConfig.log("starttemperaturesensor")
         mSensorManager.registerListener(this, mTemperature, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
