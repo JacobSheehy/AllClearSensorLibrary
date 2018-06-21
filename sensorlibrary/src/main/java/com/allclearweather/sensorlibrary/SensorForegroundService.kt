@@ -22,12 +22,19 @@ import com.allclearweather.sensorlibrary.models.Light
 import com.allclearweather.sensorlibrary.models.Pressure
 import com.allclearweather.sensorlibrary.models.Temperature
 import com.allclearweather.sensorlibrary.util.FileUtil
+import com.allclearweather.sensorlibrary.util.Installation
 import com.allclearweather.sensorlibrary.util.WeatherUnits
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import okhttp3.Call
+import okhttp3.Callback
 import java.text.DecimalFormat
 import java.util.*
 import kotlin.collections.ArrayList
+import okhttp3.OkHttpClient
+import okhttp3.Response
+import java.io.IOException
+
 
 /**
  * This is a foreground service that accesses sensors and location
@@ -77,6 +84,7 @@ class SensorForegroundService : Service() , SensorEventListener {
     private var alarmPending : PendingIntent? = null
 
     private var sensorsActive = false
+
 
     override fun onCreate() {
         super.onCreate()
@@ -381,12 +389,115 @@ class SensorForegroundService : Service() , SensorEventListener {
                 alarmPending)
     }
 
+    private fun sendHumidityToServer(humidity: Humidity) {
+        try {
+            WeatherApi.sendHumidity(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    InternalConfig.log("failure to send post condition to server")
+                    if (InternalConfig.DEBUG) {
+                        e.printStackTrace()
+                    }
+                }
+
+                @Throws(IOException::class)
+                override fun onResponse(call: Call, response: Response) {
+                    if (response.isSuccessful) {
+                        InternalConfig.log("sent humidity successfully");
+                    } else {
+                        InternalConfig.log(response.message())
+                    }
+                }
+            }, humidity, Installation.id(applicationContext), Installation.getID(applicationContext))
+        } catch (ioe: IOException) {
+            ioe.printStackTrace()
+        }
+
+    }
+
+
+    private fun sendPressureToServer(pressure: Pressure) {
+        try {
+            WeatherApi.sendPressure(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    InternalConfig.log("failure to send post condition to server")
+                    if (InternalConfig.DEBUG) {
+                        e.printStackTrace()
+                    }
+                }
+
+                @Throws(IOException::class)
+                override fun onResponse(call: Call, response: Response) {
+                    if (response.isSuccessful) {
+                        // sent well
+                        InternalConfig.log("sent pressure successfully");
+                    } else {
+                        InternalConfig.log(response.message())
+                    }
+                }
+            }, pressure, Installation.id(applicationContext), Installation.getID(applicationContext))
+        } catch (ioe: IOException) {
+            ioe.printStackTrace()
+        }
+
+    }
+
+    private fun sendTemperatureToServer(temperature: Temperature) {
+        try {
+            WeatherApi.sendTemperature(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    InternalConfig.log("failure to send post condition to server")
+                    if (InternalConfig.DEBUG) {
+                        e.printStackTrace()
+                    }
+                }
+
+                @Throws(IOException::class)
+                override fun onResponse(call: Call, response: Response) {
+                    if (response.isSuccessful) {
+                        // sent well
+                        InternalConfig.log("sent temperature successfully");
+                    } else {
+                        InternalConfig.log(response.message())
+                    }
+                }
+            },temperature, Installation.id(applicationContext), Installation.getID(applicationContext))
+        } catch (ioe: IOException) {
+            ioe.printStackTrace()
+        }
+
+    }
+
+    private fun sendLightToServer(light: Light) {
+        try {
+            WeatherApi.sendLight(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    InternalConfig.log("failure to send post condition to server")
+                    if (InternalConfig.DEBUG) {
+                        e.printStackTrace()
+                    }
+                }
+
+                @Throws(IOException::class)
+                override fun onResponse(call: Call, response: Response) {
+                    if (response.isSuccessful) {
+                        // sent well
+                    } else {
+                        InternalConfig.log(response.message())
+                    }
+                }
+            },light, Installation.id(applicationContext), Installation.getID(applicationContext))
+        } catch (ioe: IOException) {
+            ioe.printStackTrace()
+        }
+
+    }
 
     private fun recordHumidityValues(event: SensorEvent) {
         val eventVal = event.values[0]
         val newHumidity = Humidity(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newHumidity.toCSV() + "\n"
         humidityValues.add(newHumidity)
+        sendHumidityToServer(newHumidity)
         FileUtil.cleanOldFile(applicationContext, "humidity.csv")
         FileUtil.saveFile(applicationContext, "humidity.csv",newData)
     }
@@ -397,6 +508,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newData = newPressure.toCSV() + "\n"
         InternalConfig.log("pressure data: $newData")
         pressureValues.add(newPressure)
+        sendPressureToServer(newPressure)
         FileUtil.cleanOldFile(applicationContext, "pressure.csv")
         FileUtil.saveFile(applicationContext, "pressure.csv",newData)
     }
@@ -406,6 +518,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newTemperature = Temperature(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newTemperature.toCSV() + "\n"
         temperatureValues.add(newTemperature)
+        sendTemperatureToServer(newTemperature)
         FileUtil.cleanOldFile(applicationContext, "temperature.csv")
         FileUtil.saveFile(applicationContext, "temperature.csv",newData)
     }
@@ -416,6 +529,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         val newLight = Light(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newLight.toCSV() + "\n"
         lightValues.add(newLight)
+        sendLightToServer(newLight)
         FileUtil.cleanOldFile(applicationContext, "light.csv")
         FileUtil.saveFile(applicationContext, "light.csv",newData)
     }

@@ -1,6 +1,7 @@
 package com.allclearweather.sensorlibrary.util
 
 import android.content.Context
+import com.allclearweather.sensorlibrary.InternalConfig
 import java.io.File
 
 /**
