@@ -12,7 +12,7 @@ class FileUtil {
 
     companion object {
 
-        val measurementBufferMax = 300
+        val measurementBufferMax = 1500
 
         fun fileExists(context: Context, filename: String): Boolean {
             val file = context.getFileStreamPath(filename)
