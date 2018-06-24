@@ -328,7 +328,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         }
 
         notificationBuilder = NotificationCompat.Builder(this, channelName)
-                .setSmallIcon(R.drawable.partlycloudy)
+                .setSmallIcon(R.drawable.temperature)
                 .setContentText(messageContent)
                 .setContentTitle("All Clear sensor data")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
