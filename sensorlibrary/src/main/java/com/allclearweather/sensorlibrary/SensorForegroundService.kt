@@ -13,9 +13,12 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
+import android.location.LocationManager
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.preference.PreferenceManager
+import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import com.allclearweather.sensorlibrary.models.Humidity
 import com.allclearweather.sensorlibrary.models.Light
@@ -24,8 +27,13 @@ import com.allclearweather.sensorlibrary.models.Temperature
 import com.allclearweather.sensorlibrary.util.FileUtil
 import com.allclearweather.sensorlibrary.util.Installation
 import com.allclearweather.sensorlibrary.util.WeatherUnits
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.api.GoogleApiClient
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.tasks.OnSuccessListener
+import com.google.android.gms.tasks.Task
 import okhttp3.Call
 import okhttp3.Callback
 import java.text.DecimalFormat
@@ -33,6 +41,7 @@ import java.util.*
 import kotlin.collections.ArrayList
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import okhttp3.internal.Internal
 import java.io.IOException
 
 
@@ -40,7 +49,7 @@ import java.io.IOException
  * This is a foreground service that accesses sensors and location
  * to log local environmental sensor data on Android devices
  */
-class SensorForegroundService : Service() , SensorEventListener {
+class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
 
     private var notificationManager: NotificationManager? = null
     private var isRunning = false
@@ -84,6 +93,72 @@ class SensorForegroundService : Service() , SensorEventListener {
     private var alarmPending : PendingIntent? = null
 
     private var sensorsActive = false
+
+
+
+
+    private lateinit var mGoogleApiClient: GoogleApiClient
+    private var mLocationManager: LocationManager? = null
+    lateinit var mLocation: Location
+    private var mLocationRequest: LocationRequest? = null
+    private val listener: com.google.android.gms.location.LocationListener? = null
+    private val UPDATE_INTERVAL = (2 * 1000).toLong()  /* 10 secs */
+    private val FASTEST_INTERVAL: Long = 2000 /* 2 sec */
+
+    lateinit var locationManager: LocationManager
+
+    override fun onConnectionSuspended(p0: Int) {
+
+        InternalConfig.log("on connection suspended")
+        mGoogleApiClient.connect();
+    }
+
+    override fun onConnectionFailed(connectionResult: ConnectionResult) {
+        InternalConfig.log("on connection failed")
+    }
+
+    override fun onLocationChanged(location: Location) {
+        var msg = "Updated Location: Latitude " + location.longitude.toString() + location.longitude;
+        latitude = location.latitude
+        longitude = location.longitude
+
+    }
+
+    override fun onConnected(p0: Bundle?) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        startLocationUpdates()
+
+        var fusedLocationProviderClient : FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        fusedLocationProviderClient .lastLocation
+                .addOnSuccessListener(this, OnSuccessListener<Location> { location ->
+
+                    if (location != null) {
+                        InternalConfig.log("got last location")
+                        mLocation = location;
+                        latitude = location.latitude
+                        longitude = location.longitude
+                    }
+                })
+    }
+
+
+    protected fun startLocationUpdates() {
+        InternalConfig.log("sensorforegroundservice start location updates")
+        // Create the location request
+        mLocationRequest = LocationRequest.create()
+                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                .setInterval(UPDATE_INTERVAL)
+                .setFastestInterval(FASTEST_INTERVAL);
+        // Request location updates
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
+                mLocationRequest, this)
+    }
 
 
     override fun onCreate() {
@@ -142,10 +217,20 @@ class SensorForegroundService : Service() , SensorEventListener {
         sensorsActive = preferences!!.getBoolean("sensorsActive", false)
     }
 
+    private fun stopLocationUpdates() {
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect()
+        }
+    }
+
     override fun onDestroy() {
         isRunning = false
+        stopLocationUpdates()
         super.onDestroy()
+
     }
+
+
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         InternalConfig.log("onstartcommand of sensorforegroundservice")
@@ -253,6 +338,16 @@ class SensorForegroundService : Service() , SensorEventListener {
         }
 
 
+        mGoogleApiClient = GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build()
+
+        mLocationManager = this.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+        checkLocation()
+
 
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(alarmPending)
@@ -284,7 +379,7 @@ class SensorForegroundService : Service() , SensorEventListener {
             } else if (pressurePref == "hg") {
                 messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(pressureValues[pressureValues.size-1].observationVal)) + " hg")
             }
-            InternalConfig.log("adding pressure data to message content")
+            InternalConfig.log("adding psea to message content")
         }
 
         messageContent = messageContent.plus("\n")
@@ -354,6 +449,22 @@ class SensorForegroundService : Service() , SensorEventListener {
         return START_STICKY
     }
 
+
+
+
+    private fun checkLocation(): Boolean {
+        if(!isLocationEnabled()) {
+            InternalConfig.log("sensorforeground service location is not enabled")
+        }
+        return isLocationEnabled()
+    }
+
+    private fun isLocationEnabled(): Boolean {
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+
+
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // TODO
     }
@@ -382,10 +493,10 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     private fun restartSelf() {
-        InternalConfig.log("restarting sensor service in 5m delay")
+        InternalConfig.log("restarting sensor service in 10m delay")
         alarmManager.set(
                 AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis()+(1000*60*5),
+                System.currentTimeMillis()+(1000*60*10),
                 alarmPending)
     }
 
@@ -393,7 +504,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         try {
             WeatherApi.sendHumidity(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send post condition to server")
+                    InternalConfig.log("failure to send humidity data to server")
                     if (InternalConfig.DEBUG) {
                         e.printStackTrace()
                     }
@@ -419,7 +530,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         try {
             WeatherApi.sendPressure(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send post condition to server")
+                    InternalConfig.log("failure to send pressure data to server")
                     if (InternalConfig.DEBUG) {
                         e.printStackTrace()
                     }
@@ -445,7 +556,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         try {
             WeatherApi.sendTemperature(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send post condition to server")
+                    InternalConfig.log("failure to send temperature data to server")
                     if (InternalConfig.DEBUG) {
                         e.printStackTrace()
                     }
@@ -471,7 +582,7 @@ class SensorForegroundService : Service() , SensorEventListener {
         try {
             WeatherApi.sendLight(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send post condition to server")
+                    InternalConfig.log("failure to send light data to server")
                     if (InternalConfig.DEBUG) {
                         e.printStackTrace()
                     }
@@ -493,6 +604,11 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     private fun recordHumidityValues(event: SensorEvent) {
+        if(latitude ==0.0) {
+            InternalConfig.log("not recording humidity, latitude is 0");
+            return
+        }
+
         val eventVal = event.values[0]
         val newHumidity = Humidity(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newHumidity.toCSV() + "\n"
@@ -503,6 +619,10 @@ class SensorForegroundService : Service() , SensorEventListener {
     }
 
     private fun recordPressureValues(event: SensorEvent) {
+        if(latitude ==0.0) {
+            InternalConfig.log("not recording pressure, latitude is 0");
+            return
+        }
         val eventVal = event.values[0]
         val newPressure = Pressure(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newPressure.toCSV() + "\n"
@@ -525,6 +645,10 @@ class SensorForegroundService : Service() , SensorEventListener {
 
 
     private fun recordLightValues(event: SensorEvent) {
+        if(latitude ==0.0) {
+            InternalConfig.log("not recording light, latitude is 0");
+            return
+        }
         val eventVal = event.values[0]
         val newLight = Light(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
         val newData = newLight.toCSV() + "\n"
@@ -655,6 +779,12 @@ class SensorForegroundService : Service() , SensorEventListener {
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager!!.createNotificationChannel(channel)
         }
+    }
+
+
+    private fun <TResult> Task<TResult>.addOnSuccessListener(sensorForegroundService: SensorForegroundService, onSuccessListener: OnSuccessListener<TResult>) {
+        InternalConfig.log("sensorforeground service added on success listener")
+        stopLocationUpdates()
     }
 
 }

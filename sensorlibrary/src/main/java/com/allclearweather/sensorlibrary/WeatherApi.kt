@@ -1,5 +1,6 @@
 package com.allclearweather.sensorlibrary
 
+import com.allclearweather.sensorlibrary.InternalConfig.Companion.log
 import com.allclearweather.sensorlibrary.models.*
 import okhttp3.*
 import org.json.JSONException
@@ -16,6 +17,11 @@ class WeatherApi {
 
             InternalConfig.log("sending pressure ${pressure.observationVal} at ${pressure.latitudeVal}, ${pressure.longitudeVal} time ${pressure.timeVal}")
             val JSON = MediaType.parse("application/json; charset=utf-8")
+
+            if(pressure.latitudeVal==0.0) {
+                log("not sending pressure, latitude is 0")
+                return null
+            }
 
             var json = ""
             try {
@@ -52,7 +58,13 @@ class WeatherApi {
             val client = OkHttpClient()
 
             val JSON = MediaType.parse("application/json; charset=utf-8")
-            InternalConfig.log("sending pressure ${humidity.observationVal} at ${humidity.latitudeVal}, ${humidity.longitudeVal} time ${humidity.timeVal}")
+
+            if(humidity.latitudeVal==0.0) {
+                log("not sending humidity, latitude is 0")
+                return null
+            }
+
+            InternalConfig.log("sending humidity ${humidity.observationVal} at ${humidity.latitudeVal}, ${humidity.longitudeVal} time ${humidity.timeVal}")
             var json = ""
             try {
 
@@ -88,6 +100,11 @@ class WeatherApi {
             val client = OkHttpClient()
 
             val JSON = MediaType.parse("application/json; charset=utf-8")
+
+            if(temperature.latitudeVal==0.0) {
+                log("not sending temperature, latitude is 0")
+                return null
+            }
 
             InternalConfig.log("sending temperature ${temperature.observationVal} at ${temperature.latitudeVal}, ${temperature.longitudeVal} time ${temperature.timeVal}")
             var json = ""
@@ -126,7 +143,12 @@ class WeatherApi {
 
             val JSON = MediaType.parse("application/json; charset=utf-8")
 
-            InternalConfig.log("sending pressure ${light.observationVal} at ${light.latitudeVal}, ${light.longitudeVal} time ${light.timeVal}")
+            if(light.latitudeVal==0.0) {
+                log("not sending light, latitude is 0")
+                return null
+            }
+
+            InternalConfig.log("sending light ${light.observationVal} at ${light.latitudeVal}, ${light.longitudeVal} time ${light.timeVal}")
             var json = ""
             try {
 
