@@ -12,7 +12,7 @@ class FileUtil {
 
     companion object {
 
-        val measurementBufferMax = 500
+        val measurementBufferMax = 200
 
         fun log(text: String) {
             println(text)
@@ -64,16 +64,21 @@ class FileUtil {
             }
         }
 
-
         fun readFile(context: Context, fileName: String) : String {
             log("sensorlibrary running readfile")
+
             var content = ""
-            context.openFileInput(fileName).use {
-                val input = ByteArray(it.available())
-                while (it.read(input) !== -1) {
-                    content += String(input)
+            try {
+                context.openFileInput(fileName).use {
+                    val input = ByteArray(it.available())
+                    while (it.read(input) !== -1) {
+                        content += String(input)
+                    }
                 }
+            } catch(e: Exception) {
+                e.printStackTrace()
             }
+
             return content
         }
     }

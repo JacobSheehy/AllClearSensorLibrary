@@ -97,7 +97,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
 
 
-    private lateinit var mGoogleApiClient: GoogleApiClient
+    private var mGoogleApiClient: GoogleApiClient? = null
     private var mLocationManager: LocationManager? = null
     lateinit var mLocation: Location
     private var mLocationRequest: LocationRequest? = null
@@ -110,7 +110,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
     override fun onConnectionSuspended(p0: Int) {
 
         InternalConfig.log("on connection suspended")
-        mGoogleApiClient.connect();
+        mGoogleApiClient?.connect()
     }
 
     override fun onConnectionFailed(connectionResult: ConnectionResult) {
@@ -218,9 +218,12 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
     }
 
     private fun stopLocationUpdates() {
-        if (mGoogleApiClient.isConnected()) {
-            mGoogleApiClient.disconnect()
+        if(mGoogleApiClient!=null) {
+            if (mGoogleApiClient!!.isConnected) {
+                mGoogleApiClient?.disconnect()
+            }
         }
+
     }
 
     override fun onDestroy() {
@@ -423,7 +426,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
         }
 
         notificationBuilder = NotificationCompat.Builder(this, channelName)
-                .setSmallIcon(R.drawable.temperature)
+                .setSmallIcon(R.drawable.ic_router_24dp)
                 .setContentText(messageContent)
                 .setContentTitle("All Clear sensor data")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
