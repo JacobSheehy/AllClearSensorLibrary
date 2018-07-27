@@ -9,9 +9,17 @@ import android.content.Intent
  */
 class StartDataReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
-        InternalConfig.log("startdatareceiver onreceive, starting service")
-        val newIntent = Intent(context, SensorForegroundService::class.java)
-        context?.startService(newIntent)
+        try {
+            InternalConfig.log("startdatareceiver onreceive, starting service")
+            val newIntent = Intent(context, SensorForegroundService::class.java)
+            context?.startService(newIntent)
+        } catch(e: Exception) {
+            if(InternalConfig.DEBUG) {
+                e.printStackTrace()
+            }
+
+        }
+
     }
 
 

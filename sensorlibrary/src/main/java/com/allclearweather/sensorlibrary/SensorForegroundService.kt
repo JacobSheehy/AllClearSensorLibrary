@@ -440,12 +440,20 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
         notificationManager?.notify(1, notification)
 
 
-        startForeground(1, notification)
-        isRunning = true
 
-        checkAndUpdateLocation()
+        try {
+            startForeground(1, notification)
+            isRunning = true
 
-        startProcessingSensorData()
+            checkAndUpdateLocation()
+
+            startProcessingSensorData()
+        } catch(e: Exception) {
+            if(InternalConfig.DEBUG) {
+                e.printStackTrace()
+            }
+        }
+
 
 
 
