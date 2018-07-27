@@ -17,7 +17,7 @@ class StartDataReceiver : BroadcastReceiver() {
             if(Build.VERSION.SDK_INT>=26 ) {
                 ContextCompat.startForegroundService(context!!, newIntent)
             } else {
-                context.startService(intent);
+                context!!.startService(intent)
             }
 
         } catch(e: Exception) {
