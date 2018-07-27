@@ -12,7 +12,7 @@ class FileUtil {
 
     companion object {
 
-        val measurementBufferMax = 200
+        val measurementBufferMax = 400
 
         fun log(text: String) {
             println(text)
