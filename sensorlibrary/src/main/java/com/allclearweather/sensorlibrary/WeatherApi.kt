@@ -11,6 +11,11 @@ class WeatherApi {
 
     companion object {
 
+        fun roundAvoid(value: Double, places: Int): Double {
+            val scale = Math.pow(10.0, places.toDouble())
+            return Math.round(value * scale) / scale
+        }
+
         @Throws(IOException::class)
         fun sendPressure(callback: Callback, pressure: Pressure, installId: String, deviceId: String): Call? {
             val client = OkHttpClient()
@@ -27,8 +32,8 @@ class WeatherApi {
             try {
 
                 val jsonCondition = JSONObject()
-                jsonCondition.put("latitude", pressure.latitudeVal)
-                jsonCondition.put("longitude", pressure.longitudeVal)
+                jsonCondition.put("latitude", roundAvoid(pressure.latitudeVal, 2))
+                jsonCondition.put("longitude", roundAvoid(pressure.longitudeVal,2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", pressure.timeVal)
@@ -69,8 +74,8 @@ class WeatherApi {
             try {
 
                 val jsonCondition = JSONObject()
-                jsonCondition.put("latitude", humidity.latitudeVal)
-                jsonCondition.put("longitude", humidity.longitudeVal)
+                jsonCondition.put("latitude", roundAvoid(humidity.latitudeVal,2))
+                jsonCondition.put("longitude", roundAvoid(humidity.longitudeVal,2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", humidity.timeVal)
@@ -111,8 +116,8 @@ class WeatherApi {
             try {
 
                 val jsonCondition = JSONObject()
-                jsonCondition.put("latitude", temperature.latitudeVal)
-                jsonCondition.put("longitude", temperature.longitudeVal)
+                jsonCondition.put("latitude", roundAvoid(temperature.latitudeVal,2))
+                jsonCondition.put("longitude", roundAvoid(temperature.longitudeVal,2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", temperature.timeVal)
@@ -153,8 +158,8 @@ class WeatherApi {
             try {
 
                 val jsonCondition = JSONObject()
-                jsonCondition.put("latitude", light.latitudeVal)
-                jsonCondition.put("longitude", light.longitudeVal)
+                jsonCondition.put("latitude", roundAvoid(light.latitudeVal,2))
+                jsonCondition.put("longitude", roundAvoid(light.longitudeVal,2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", light.timeVal)
