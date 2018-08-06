@@ -1,6 +1,8 @@
 # AllClearSensorLibrary
 
-This is an Android library written in Kotlin for accessing sensors in the foreground. The project is currently a Work-In-Progress and is not yet ready for use in production.
+This is an Android library written in Kotlin for accessing sensors in the foreground. The project is currently a Work-In-Progress and is not yet ready for use in production by many apps. 
+
+It is currently used in [All Clear Weather](https://play.google.com/store/apps/details?id=com.allclearweather.android).
 
 Key features
 ------------
