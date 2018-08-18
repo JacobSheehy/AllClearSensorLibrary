@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.IBinder
-import android.support.v4.app.NotificationCompat
+
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -18,8 +18,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.preference.PreferenceManager
-import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+
 import com.allclearweather.sensorlibrary.models.Humidity
 import com.allclearweather.sensorlibrary.models.Light
 import com.allclearweather.sensorlibrary.models.Pressure
