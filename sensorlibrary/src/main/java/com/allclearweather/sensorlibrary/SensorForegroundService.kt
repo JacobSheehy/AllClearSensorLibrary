@@ -431,7 +431,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
                 .setSmallIcon(R.drawable.ic_router_24dp)
                 .setContentText(messageContent)
                 .setContentTitle("All Clear sensor data")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
