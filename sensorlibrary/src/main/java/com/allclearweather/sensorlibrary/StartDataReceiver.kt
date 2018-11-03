@@ -21,15 +21,11 @@ class StartDataReceiver : BroadcastReceiver() {
                     it.startService(intent)
                 }
             }
-
         } catch(e: Exception) {
             if(InternalConfig.DEBUG) {
                 e.printStackTrace()
             }
 
         }
-
     }
-
-
 }

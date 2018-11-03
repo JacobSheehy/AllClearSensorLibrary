@@ -211,18 +211,20 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
         preferences = PreferenceManager.getDefaultSharedPreferences(this)
         //editor = preferences?.edit()
 
-        temperaturePref = preferences!!.getString("tempPref","c")
-        pressurePref = preferences!!.getString("prefPressure","mb")
-        sensorsActive = preferences!!.getBoolean("sensorsActive", false)
+        preferences?.let {
+            temperaturePref = it.getString("tempPref","c")
+            pressurePref = it.getString("prefPressure","mb")
+            sensorsActive = it.getBoolean("sensorsActive", false)
+        }
+
     }
 
     private fun stopLocationUpdates() {
-        if(mGoogleApiClient!=null) {
-            if (mGoogleApiClient!!.isConnected) {
-                mGoogleApiClient?.disconnect()
+        mGoogleApiClient?.let {
+            if (it.isConnected) {
+                it.disconnect()
             }
         }
-
     }
 
     override fun onDestroy() {
@@ -236,7 +238,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         InternalConfig.log("onstartcommand of sensorforegroundservice")
-        sensorsActive = preferences!!.getBoolean("sensorsActive", false)
+        sensorsActive = preferences?.getBoolean("sensorsActive", false) ?: false
         if((intent?.extras?.get("stop") !=null) || (!sensorsActive))  {
             isRunning = false
             notificationManager?.cancel(1)
