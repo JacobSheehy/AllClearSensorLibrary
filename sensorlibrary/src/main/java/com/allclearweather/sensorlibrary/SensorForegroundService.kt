@@ -97,13 +97,10 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
     private var sensorsActive = false
 
 
-
-
     private var mGoogleApiClient: GoogleApiClient? = null
     private var mLocationManager: LocationManager? = null
     lateinit var mLocation: Location
     private var mLocationRequest: LocationRequest? = null
-    private val listener: com.google.android.gms.location.LocationListener? = null
     private val UPDATE_INTERVAL = (2 * 1000).toLong()  /* 10 secs */
     private val FASTEST_INTERVAL: Long = 2000 /* 2 sec */
 
@@ -133,7 +130,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
         startLocationUpdates()
 
-        var fusedLocationProviderClient : FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        val fusedLocationProviderClient : FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         fusedLocationProviderClient .lastLocation
                 .addOnSuccessListener(this, OnSuccessListener<Location> { location ->
 
@@ -212,7 +209,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
     private fun setPrefs() {
         preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        editor = preferences?.edit()
+        //editor = preferences?.edit()
 
         temperaturePref = preferences!!.getString("tempPref","c")
         pressurePref = preferences!!.getString("prefPressure","mb")
