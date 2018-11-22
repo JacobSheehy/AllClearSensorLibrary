@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">SensorLibrary</string>
+    <string name="devicePressureData">All Clear - Device Pressure Data</string>
+    <string name="viewPressureData">View Pressure Data (.csv)</string>
+    <string name="deviceHumidityData">All Clear - Device Humidity Data</string>
+    <string name="viewHumidityData">View Humidity Data (.csv)</string>
+    <string name="deviceTemperatureData">All Clear - Device Temperature Data</string>
+    <string name="viewTemperatureData">View Temperature Data (.csv)</string>
+    <string name="deviceLightData">All Clear - Device Light Data</string>
+    <string name="viewLightData">View Light Data(.csv)</string>
+    <string name="notificationSensorDataTitle">All Clear sensor data</string>
+    <string name="gatheringData">Gathering data, check back soon!</string>
 </resources>

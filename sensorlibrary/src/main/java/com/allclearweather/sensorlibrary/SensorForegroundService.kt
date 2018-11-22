@@ -21,6 +21,7 @@ import android.preference.PreferenceManager
 import android.support.v4.app.ActivityCompat
 import android.support.v4.app.NotificationCompat
 import android.support.v4.content.ContextCompat
+import com.allclearweather.sensorlibrary.api.SensorApi
 
 import com.allclearweather.sensorlibrary.models.Humidity
 import com.allclearweather.sensorlibrary.models.Light
@@ -39,11 +40,8 @@ import com.google.android.gms.tasks.Task
 import okhttp3.Call
 import okhttp3.Callback
 import java.text.DecimalFormat
-import java.util.*
 import kotlin.collections.ArrayList
-import okhttp3.OkHttpClient
 import okhttp3.Response
-import okhttp3.internal.Internal
 import java.io.IOException
 
 
@@ -51,13 +49,14 @@ import java.io.IOException
  * This is a foreground service that accesses sensors and location
  * to log local environmental sensor data on Android devices
  */
-class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
+class SensorForegroundService : Service(), SensorEventListener, GoogleApiClient.ConnectionCallbacks,
+                                                                GoogleApiClient.OnConnectionFailedListener,
+                                                                com.google.android.gms.location.LocationListener {
 
     private var notificationManager: NotificationManager? = null
     private var isRunning = false
 
     private val notificationRequestCode = 0
-
     private val channelName = "All Clear - Sensor Data"
 
     private var hasBarometer = false
@@ -96,13 +95,11 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
     private var sensorsActive = false
 
-
     private var mGoogleApiClient: GoogleApiClient? = null
     private var mLocationManager: LocationManager? = null
     lateinit var mLocation: Location
     private var mLocationRequest: LocationRequest? = null
-    private val UPDATE_INTERVAL = (2 * 1000).toLong()  /* 10 secs */
-    private val FASTEST_INTERVAL: Long = 2000 /* 2 sec */
+
 
     lateinit var locationManager: LocationManager
 
@@ -143,33 +140,25 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
                 })
     }
 
-
-    protected fun startLocationUpdates() {
+    private fun startLocationUpdates() {
         InternalConfig.log("sensorforegroundservice start location updates")
         // Create the location request
         mLocationRequest = LocationRequest.create()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-                .setInterval(UPDATE_INTERVAL)
-                .setFastestInterval(FASTEST_INTERVAL);
+                .setInterval(SensorControls.UPDATE_INTERVAL)
+                .setFastestInterval(SensorControls.FASTEST_INTERVAL);
         // Request location updates
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
+            return
         }
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
                 mLocationRequest, this)
     }
 
-
     override fun onCreate() {
         super.onCreate()
-        val context = this as Context
         isRunning = false
         createNotificationChannel()
-
-        temperatureValues = ArrayList()
-        pressureValues = ArrayList()
-        humidityValues = ArrayList()
-        lightValues = ArrayList()
 
         setPrefs()
 
@@ -184,10 +173,7 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-
         checkAndUpdateLocation()
-
-
     }
 
     private fun checkAndUpdateLocation() {
@@ -209,7 +195,6 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
     private fun setPrefs() {
         preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        //editor = preferences?.edit()
 
         preferences?.let {
             temperaturePref = it.getString("tempPref","c")
@@ -234,114 +219,115 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
     }
 
+    private fun handleStopSelfFromIntent(intent: Intent?) : Int {
+        isRunning = false
+        notificationManager?.cancel(1)
+        stopForeground(true)
+        InternalConfig.log("onstartcommand stopping running service sensorsactive: $sensorsActive, stop= " + intent?.extras?.get("stop"))
 
+        editor = preferences?.edit()
+        editor?.putBoolean("sensorsActive", false)
+        editor?.apply()
+        this.stopSelf()
+        return START_NOT_STICKY
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         InternalConfig.log("onstartcommand of sensorforegroundservice")
-        sensorsActive = preferences?.getBoolean("sensorsActive", false) ?: false
+        preferences?.let {
+            sensorsActive = it.getBoolean("sensorsActive", false)
+        }
+
         if((intent?.extras?.get("stop") !=null) || (!sensorsActive))  {
-            isRunning = false
-            notificationManager?.cancel(1)
-            stopForeground(true)
-            InternalConfig.log("onstartcommand stopping running service sensorsactive: $sensorsActive, stop= " + intent?.extras?.get("stop"))
-
-            editor = preferences?.edit()
-            editor?.putBoolean("sensorsActive", false)
-            editor?.apply()
-            this.stopSelf()
-            return START_NOT_STICKY
+            return handleStopSelfFromIntent(intent)
         }
 
+        intent?.let { startServiceIntent ->
+            when {
+                startServiceIntent.extras?.get("getPressureData") !=null -> {
+                    InternalConfig.log("getPressureData")
+                    val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
+                    val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+                    sendDataIntent.putExtra("dataSetPressure", fileContents)
+                    sendBroadcast(sendDataIntent)
+                    return START_NOT_STICKY
+                }
+                startServiceIntent.extras?.get("getTemperatureData") !=null -> {
+                    InternalConfig.log("getTemperatureData")
+                    val fileContents = FileUtil.readFile(applicationContext, "temperature.csv")
+                    val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+                    sendDataIntent.putExtra("dataSetTemperature", fileContents)
+                    sendBroadcast(sendDataIntent)
+                    return START_NOT_STICKY
+                }
+                startServiceIntent.extras?.get("getHumidityData") !=null -> {
+                    InternalConfig.log("getHumidityData")
+                    val fileContents = FileUtil.readFile(applicationContext, "humidity.csv")
+                    val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+                    sendDataIntent.putExtra("dataSetHumidity", fileContents)
+                    sendBroadcast(sendDataIntent)
+                    return START_NOT_STICKY
+                }
+                startServiceIntent.extras?.get("getLightData") !=null -> {
+                    InternalConfig.log("getLightData")
+                    val fileContents = FileUtil.readFile(applicationContext, "light.csv")
+                    val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
+                    sendDataIntent.putExtra("dataSetLight", fileContents)
+                    sendBroadcast(sendDataIntent)
+                    return START_NOT_STICKY
+                }
+                startServiceIntent.extras?.get("viewPressureData") !=null -> {
+                    val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
+                    val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+                    sharingIntent.type = "text/plain"
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, getString(R.string.devicePressureData))
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+                    sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(Intent.createChooser(sharingIntent, getString(R.string.viewPressureData)))
+                    return START_NOT_STICKY
+                }
+                startServiceIntent.extras?.get("viewHumidityData") !=null -> {
+                    val fileContents = FileUtil.readFile(applicationContext, "humidity.csv")
+                    val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+                    sharingIntent.type = "text/plain"
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, getString(R.string.deviceHumidityData))
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+                    sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
 
-
-        if(intent?.extras?.get("getPressureData") !=null)  {
-            InternalConfig.log("getPressureData")
-            val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
-            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
-            sendDataIntent.putExtra("dataSetPressure", fileContents)
-            sendBroadcast(sendDataIntent)
-            return START_NOT_STICKY
+                    startActivity(Intent.createChooser(sharingIntent, getString(R.string.viewHumidityData)))
+                    return START_NOT_STICKY
+                }
+                startServiceIntent.extras?.get("viewTemperatureData") !=null -> {
+                    val fileContents = FileUtil.readFile(applicationContext, "temperature.csv")
+                    val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+                    sharingIntent.type = "text/plain"
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, getString(R.string.deviceTemperatureData))
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+                    sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(Intent.createChooser(sharingIntent, getString(R.string.viewTemperatureData)))
+                    return START_NOT_STICKY
+                }
+                startServiceIntent.extras?.get("viewLightData") !=null -> {
+                    val fileContents = FileUtil.readFile(applicationContext, "light.csv")
+                    val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
+                    sharingIntent.type = "text/plain"
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, getString(R.string.deviceLightData))
+                    sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
+                    sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(Intent.createChooser(sharingIntent, getString(R.string.viewLightData)))
+                    return START_NOT_STICKY
+                } else -> {
+                    processServiceStartForDataCollection(intent)
+                    return START_STICKY
+                }
+            }
         }
 
+        stopForeground(true)
+        return START_NOT_STICKY
+    }
 
-
-        if(intent?.extras?.get("getTemperatureData") !=null)  {
-            InternalConfig.log("getTemperatureData")
-            val fileContents = FileUtil.readFile(applicationContext, "temperature.csv")
-            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
-            sendDataIntent.putExtra("dataSetTemperature", fileContents)
-            sendBroadcast(sendDataIntent)
-            return START_NOT_STICKY
-        }
-
-
-
-        if(intent?.extras?.get("getHumidityData") !=null)  {
-            InternalConfig.log("getHumidityData")
-            val fileContents = FileUtil.readFile(applicationContext, "humidity.csv")
-            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
-            sendDataIntent.putExtra("dataSetHumidity", fileContents)
-            sendBroadcast(sendDataIntent)
-            return START_NOT_STICKY
-        }
-
-
-        if(intent?.extras?.get("getLightData") !=null)  {
-            InternalConfig.log("getLightData")
-            val fileContents = FileUtil.readFile(applicationContext, "light.csv")
-            val sendDataIntent = Intent("com.allclearweather.android.ACTION_SENSOR_DATA")
-            sendDataIntent.putExtra("dataSetLight", fileContents)
-            sendBroadcast(sendDataIntent)
-            return START_NOT_STICKY
-        }
-
-        if(intent?.extras?.get("viewPressureData") !=null)  {
-            val fileContents = FileUtil.readFile(applicationContext, "pressure.csv")
-            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
-            sharingIntent.type = "text/plain"
-            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Pressure Data")
-            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
-            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(Intent.createChooser(sharingIntent, "View Pressure Data (.csv)"))
-            return START_NOT_STICKY
-        }
-
-        if(intent?.extras?.get("viewHumidityData") !=null)  {
-            val fileContents = FileUtil.readFile(applicationContext, "humidity.csv")
-            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
-            sharingIntent.type = "text/plain"
-            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Humidity Data")
-            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
-            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-
-            startActivity(Intent.createChooser(sharingIntent, "View Humidity Data (.csv)"))
-            return START_NOT_STICKY
-        }
-
-        if(intent?.extras?.get("viewTemperatureData") !=null)  {
-            val fileContents = FileUtil.readFile(applicationContext, "temperature.csv")
-            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
-            sharingIntent.type = "text/plain"
-            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Temperature Data")
-            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
-            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(Intent.createChooser(sharingIntent, "View Temperature Data (.csv)"))
-            return START_NOT_STICKY
-        }
-
-
-        if(intent?.extras?.get("viewLightData") !=null)  {
-            val fileContents = FileUtil.readFile(applicationContext, "light.csv")
-            val sharingIntent = Intent(android.content.Intent.ACTION_SEND)
-            sharingIntent.type = "text/plain"
-            sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, "All Clear - Device Light Data")
-            sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, fileContents)
-            sharingIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(Intent.createChooser(sharingIntent, "View Temperature Light (.csv)"))
-            return START_NOT_STICKY
-        }
-
-
+    private fun processServiceStartForDataCollection(intent: Intent) {
         mGoogleApiClient = GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
@@ -352,96 +338,17 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
         checkLocation()
 
-
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(alarmPending)
 
         InternalConfig.log("onstartcommand of sensorforegroundservice, is running? $isRunning")
-        //var notificationIntent = Intent("com.allclearweather.allclearsensorlibrary")
 
-        val receiverAction = applicationContext.packageName + ".SERVICE_FOREGROUND_NOTIFICATION"
-        InternalConfig.log("sensorforegroundservice receiveraction=$receiverAction")
-        // No need for Class definition in the constructor.
-        val intent = Intent()
-        // Set the unique action.
-        intent.action = receiverAction
-        // Set the application package name on the Intent, so only the application
-        // will have this Intent broadcasted, thus making it “explicit" and secure.
-        intent.`package` = applicationContext.packageName
+        prepareAndSendNotification(intent)
 
-        intent.putExtra("fromSensorNotification",true)
-        var pendingIntent = PendingIntent.getBroadcast(this,  notificationRequestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        startForegroundAndSensorData()
+    }
 
-        var messageContent = ""
-
-        if(pressureValues.size>0) {
-            var df = DecimalFormat("##.##")
-
-            if(pressurePref == "mb") {
-                var pressureVar = pressureValues[pressureValues.size-1].observationVal
-                messageContent = messageContent.plus(df.format(pressureVar) + " mb")
-            } else if (pressurePref == "hg") {
-                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(pressureValues[pressureValues.size-1].observationVal)) + " hg")
-            }
-            InternalConfig.log("adding psea to message content")
-        }
-
-        messageContent = messageContent.plus("\n")
-
-        if(temperatureValues.size>0) {
-            var df = DecimalFormat("##.##")
-
-            if(temperaturePref == "c") {
-                var temperatureVar = temperatureValues[temperatureValues.size-1].observationVal
-                messageContent = messageContent.plus(df.format(temperatureVar) + " °C")
-            } else if (pressurePref == "f") {
-                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(temperatureValues[temperatureValues.size-1].observationVal)) + " °F")
-
-            }
-            InternalConfig.log("adding temperature data to message content")
-        }
-
-        messageContent = messageContent.plus("\n")
-
-        if(humidityValues.size>0) {
-            var df = DecimalFormat("##.##")
-            messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(humidityValues[humidityValues.size-1].observationVal)) + " %")
-
-            InternalConfig.log("adding humidity data to message content")
-        }
-
-        messageContent = messageContent.plus("\n")
-
-        if(lightValues.size>0) {
-            var df = DecimalFormat("##.##")
-            messageContent = messageContent.plus(df.format(lightValues[lightValues.size-1].observationVal) + " lx")
-
-            InternalConfig.log("adding light data to message content")
-        }
-
-
-        InternalConfig.log("isRunning=$isRunning, starting foreground, messagedata = $messageContent")
-
-        if(messageContent.trim() == ""){
-            messageContent = "Gathering data, check back soon!"
-        }
-
-        notificationBuilder = NotificationCompat.Builder(this, channelName)
-                .setSmallIcon(R.drawable.ic_router_24dp)
-                .setContentText(messageContent)
-                .setContentTitle("All Clear sensor data")
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-
-
-
-        notification = notificationBuilder?.build()
-        notificationManager?.notify(1, notification)
-
-
-
+    private fun startForegroundAndSensorData() {
         try {
             startForeground(1, notification)
             isRunning = true
@@ -449,20 +356,92 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
             checkAndUpdateLocation()
 
             startProcessingSensorData()
-        } catch(e: Exception) {
-            if(InternalConfig.DEBUG) {
+        } catch (e: Exception) {
+            if (InternalConfig.DEBUG) {
                 e.printStackTrace()
             }
         }
-
-
-
-
-        return START_STICKY
     }
 
+    private fun prepareAndSendNotification(intent: Intent) {
+        val receiverAction = applicationContext.packageName + ".SERVICE_FOREGROUND_NOTIFICATION"
+        InternalConfig.log("sensorforegroundservice receiveraction=$receiverAction")
+        // No need for Class definition in the constructor.
+        val intentAction = Intent()
+        // Set the unique action.
+        intentAction.action = receiverAction
+        // Set the application package name on the Intent, so only the application
+        // will have this Intent broadcasted, thus making it “explicit" and secure.
+        intentAction.`package` = applicationContext.packageName
+
+        intentAction.putExtra("fromSensorNotification", true)
+        val pendingIntent = PendingIntent.getBroadcast(this, notificationRequestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        val messageContent = prepareMessageContent()
+
+        notificationBuilder = NotificationCompat.Builder(this, channelName)
+                .setSmallIcon(R.drawable.ic_router_24dp)
+                .setContentText(messageContent)
+                .setContentTitle(getString(R.string.notificationSensorDataTitle))
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+
+        notification = notificationBuilder?.build()
+
+        notificationManager?.notify(1, notification)
+    }
+
+    private fun prepareMessageContent() : String {
+        var messageContent = ""
+        val df = DecimalFormat("##.##")
+
+        if (pressureValues.size > 0) {
+            if (pressurePref == "mb") {
+                val pressureVar = pressureValues[pressureValues.size - 1].observationVal
+                messageContent = messageContent.plus(df.format(pressureVar) + " mb")
+            } else if (pressurePref == "hg") {
+                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(pressureValues[pressureValues.size - 1].observationVal)) + " hg")
+            }
+            InternalConfig.log("adding pressure to message content")
+        }
+
+        messageContent = messageContent.plus("\n")
+
+        if (temperatureValues.size > 0) {
+
+            if (temperaturePref == "c") {
+                val temperatureVar = temperatureValues[temperatureValues.size - 1].observationVal
+                messageContent = messageContent.plus(df.format(temperatureVar) + " °C")
+            } else if (pressurePref == "f") {
+                messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(temperatureValues[temperatureValues.size - 1].observationVal)) + " °F")
+
+            }
+            InternalConfig.log("adding temperature data to message content")
+        }
+        messageContent = messageContent.plus("\n")
+
+        if (humidityValues.size > 0) {
+            messageContent = messageContent.plus(df.format(WeatherUnits.convertMbToHg(humidityValues[humidityValues.size - 1].observationVal)) + " %")
+            InternalConfig.log("adding humidity data to message content")
+        }
+
+        messageContent = messageContent.plus("\n")
+
+        if (lightValues.size > 0) {
+            messageContent = messageContent.plus(df.format(lightValues[lightValues.size - 1].observationVal) + " lx")
+            InternalConfig.log("adding light data to message content")
+        }
 
 
+        InternalConfig.log("isRunning=$isRunning, starting foreground, messagedata = $messageContent")
+
+        if (messageContent.trim() == "") {
+            messageContent = getString(R.string.gatheringData)
+        }
+        return messageContent
+    }
 
     private fun checkLocation(): Boolean {
         if(!isLocationEnabled()) {
@@ -476,7 +455,6 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
-
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // TODO
     }
@@ -484,22 +462,25 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
     override fun onSensorChanged(event: SensorEvent?) {
         when {
             event?.sensor?.type==Sensor.TYPE_AMBIENT_TEMPERATURE -> {
-                recordTemperatureValues(event)
-                stopTemperatureListener()
-
+                DataRecorder.recordTemperatureValues(event,
+                        latitude, longitude, applicationContext, temperatureValues)
+                SensorControls.stopSensorListener(mSensorManager, mTemperature, this)
             }
             event?.sensor?.type==Sensor.TYPE_RELATIVE_HUMIDITY -> {
-                recordHumidityValues(event)
-                stopHumidityListener()
+                DataRecorder.recordHumidityValues(event,
+                        latitude, longitude, applicationContext, humidityValues)
+                SensorControls.stopSensorListener(mSensorManager, mHumidity, this)
 
             }
             event?.sensor?.type==Sensor.TYPE_PRESSURE -> {
-                recordPressureValues(event)
-                stopPressureListener()
+                DataRecorder.recordPressureValues(event,
+                        latitude, longitude, applicationContext, pressureValues)
+                SensorControls.stopSensorListener(mSensorManager, mPressure, this)
             }
             event?.sensor?.type==Sensor.TYPE_LIGHT-> {
-                recordLightValues(event)
-                stopLightListener()
+                DataRecorder.recordLightValues(event,
+                        latitude, longitude, applicationContext, lightValues)
+                SensorControls.stopSensorListener(mSensorManager, mLight, this)
             }
         }
     }
@@ -512,165 +493,6 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
                 alarmPending)
     }
 
-    private fun sendHumidityToServer(humidity: Humidity) {
-        try {
-            WeatherApi.sendHumidity(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send humidity data to server")
-                    if (InternalConfig.DEBUG) {
-                        e.printStackTrace()
-                    }
-                }
-
-                @Throws(IOException::class)
-                override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        InternalConfig.log("sent humidity successfully");
-                    } else {
-                        InternalConfig.log(response.message())
-                    }
-                }
-            }, humidity, Installation.id(applicationContext), Installation.getID(applicationContext))
-        } catch (ioe: IOException) {
-            ioe.printStackTrace()
-        }
-
-    }
-
-
-    private fun sendPressureToServer(pressure: Pressure) {
-        try {
-            WeatherApi.sendPressure(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send pressure data to server")
-                    if (InternalConfig.DEBUG) {
-                        e.printStackTrace()
-                    }
-                }
-
-                @Throws(IOException::class)
-                override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        // sent well
-                        InternalConfig.log("sent pressure successfully");
-                    } else {
-                        InternalConfig.log(response.message())
-                    }
-                }
-            }, pressure, Installation.id(applicationContext), Installation.getID(applicationContext))
-        } catch (ioe: IOException) {
-            ioe.printStackTrace()
-        }
-
-    }
-
-    private fun sendTemperatureToServer(temperature: Temperature) {
-        try {
-            WeatherApi.sendTemperature(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send temperature data to server")
-                    if (InternalConfig.DEBUG) {
-                        e.printStackTrace()
-                    }
-                }
-
-                @Throws(IOException::class)
-                override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        // sent well
-                        InternalConfig.log("sent temperature successfully");
-                    } else {
-                        InternalConfig.log(response.message())
-                    }
-                }
-            },temperature, Installation.id(applicationContext), Installation.getID(applicationContext))
-        } catch (ioe: IOException) {
-            ioe.printStackTrace()
-        }
-
-    }
-
-    private fun sendLightToServer(light: Light) {
-        try {
-            WeatherApi.sendLight(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    InternalConfig.log("failure to send light data to server")
-                    if (InternalConfig.DEBUG) {
-                        e.printStackTrace()
-                    }
-                }
-
-                @Throws(IOException::class)
-                override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        // sent well
-                    } else {
-                        InternalConfig.log(response.message())
-                    }
-                }
-            },light, Installation.id(applicationContext), Installation.getID(applicationContext))
-        } catch (ioe: IOException) {
-            ioe.printStackTrace()
-        }
-
-    }
-
-    private fun recordHumidityValues(event: SensorEvent) {
-        if(latitude ==0.0) {
-            InternalConfig.log("not recording humidity, latitude is 0");
-            return
-        }
-
-        val eventVal = event.values[0]
-        val newHumidity = Humidity(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
-        val newData = newHumidity.toCSV() + "\n"
-        humidityValues.add(newHumidity)
-        sendHumidityToServer(newHumidity)
-        FileUtil.cleanOldFile(applicationContext, "humidity.csv")
-        FileUtil.saveFile(applicationContext, "humidity.csv",newData)
-    }
-
-    private fun recordPressureValues(event: SensorEvent) {
-        if(latitude ==0.0) {
-            InternalConfig.log("not recording pressure, latitude is 0");
-            return
-        }
-        val eventVal = event.values[0]
-        val newPressure = Pressure(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
-        val newData = newPressure.toCSV() + "\n"
-        InternalConfig.log("pressure data: $newData")
-        pressureValues.add(newPressure)
-        sendPressureToServer(newPressure)
-        FileUtil.cleanOldFile(applicationContext, "pressure.csv")
-        FileUtil.saveFile(applicationContext, "pressure.csv",newData)
-    }
-
-    private fun recordTemperatureValues(event: SensorEvent) {
-        val eventVal = event.values[0]
-        val newTemperature = Temperature(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
-        val newData = newTemperature.toCSV() + "\n"
-        temperatureValues.add(newTemperature)
-        sendTemperatureToServer(newTemperature)
-        FileUtil.cleanOldFile(applicationContext, "temperature.csv")
-        FileUtil.saveFile(applicationContext, "temperature.csv",newData)
-    }
-
-
-    private fun recordLightValues(event: SensorEvent) {
-        if(latitude ==0.0) {
-            InternalConfig.log("not recording light, latitude is 0");
-            return
-        }
-        val eventVal = event.values[0]
-        val newLight = Light(System.currentTimeMillis(), eventVal.toDouble(), latitude, longitude)
-        val newData = newLight.toCSV() + "\n"
-        lightValues.add(newLight)
-        sendLightToServer(newLight)
-        FileUtil.cleanOldFile(applicationContext, "light.csv")
-        FileUtil.saveFile(applicationContext, "light.csv",newData)
-    }
-
-
     private fun startProcessingSensorData() {
         InternalConfig.log("start processing sensor data")
         val manager = packageManager
@@ -681,17 +503,16 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
             hasLightSensor = manager.hasSystemFeature(PackageManager.FEATURE_SENSOR_LIGHT)
         } else {
             val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-            var humid = sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY)
-
+            val humid = sensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY)
             hasHumiditySensor = humid != null
 
-            var temp = sensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
+            val temp = sensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
             hasTemperatureSensor = temp != null
 
-            var pressure = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
+            val pressure = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
             hasBarometer = pressure != null
 
-            var light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+            val light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
             hasLightSensor = light != null
         }
 
@@ -699,77 +520,32 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
 
         if(hasBarometer) {
             mPressure = mSensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
-            startPressureListener()
+            SensorControls.startSensorListener(mSensorManager, mPressure, this)
         }
 
         if(hasHumiditySensor) {
             mHumidity = mSensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY)
-            startHumidityListener()
+            SensorControls.startSensorListener(mSensorManager, mHumidity, this)
         }
 
         if(hasTemperatureSensor) {
             mTemperature = mSensorManager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
-            startTemperatureListener()
+            SensorControls.startSensorListener(mSensorManager, mTemperature, this)
         }
 
         if(hasLightSensor) {
             mLight = mSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
-            startLightListener()
+            SensorControls.startSensorListener(mSensorManager, mLight, this)
         }
 
-        restartSelfDelayed()
+        restartSelfThread()
     }
 
 
-    private fun restartSelfDelayed() {
-        Handler().postDelayed({
-            //doSomethingHere()
+    private fun restartSelfThread() {
+        Handler().post{
             restartSelf()
-        }, 3000)
-    }
-
-    private fun startLightListener() {
-        InternalConfig.log("startlightsensor")
-        mSensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_NORMAL)
-    }
-
-
-    private fun startHumidityListener() {
-        InternalConfig.log("starthumiditysensor")
-        mSensorManager.registerListener(this, mHumidity, SensorManager.SENSOR_DELAY_NORMAL)
-    }
-
-    private fun startPressureListener() {
-        InternalConfig.log("startpressuresensor")
-        mSensorManager.registerListener(this, mPressure, SensorManager.SENSOR_DELAY_NORMAL)
-    }
-
-    private fun startTemperatureListener() {
-        InternalConfig.log("starttemperaturesensor")
-        mSensorManager.registerListener(this, mTemperature, SensorManager.SENSOR_DELAY_NORMAL)
-    }
-
-    private fun stopProcessingSensorData() {
-        stopTemperatureListener()
-        stopPressureListener()
-        stopHumidityListener()
-        stopLightListener()
-    }
-
-    fun stopLightListener() {
-        mSensorManager.unregisterListener(this, mLight)
-    }
-
-    fun stopHumidityListener() {
-        mSensorManager.unregisterListener(this, mHumidity)
-    }
-
-    fun stopTemperatureListener() {
-        mSensorManager.unregisterListener(this, mTemperature)
-    }
-
-    fun stopPressureListener() {
-        mSensorManager.unregisterListener(this, mPressure)
+        }
     }
 
 
@@ -792,7 +568,6 @@ class SensorForegroundService : Service() , SensorEventListener, GoogleApiClient
             notificationManager!!.createNotificationChannel(channel)
         }
     }
-
 
     private fun <TResult> Task<TResult>.addOnSuccessListener(sensorForegroundService: SensorForegroundService, onSuccessListener: OnSuccessListener<TResult>) {
         InternalConfig.log("sensorforeground service added on success listener")

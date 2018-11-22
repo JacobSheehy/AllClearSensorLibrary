@@ -1,13 +1,20 @@
-package com.allclearweather.sensorlibrary
+package com.allclearweather.sensorlibrary.api
 
+import android.content.Context
+import com.allclearweather.sensorlibrary.InternalConfig
 import com.allclearweather.sensorlibrary.InternalConfig.Companion.log
 import com.allclearweather.sensorlibrary.models.*
+import com.allclearweather.sensorlibrary.util.Installation
 import okhttp3.*
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 
-class WeatherApi {
+/**
+ * Send sensor data to the server.
+ */
+
+class SensorApi {
 
     companion object {
 
@@ -15,6 +22,107 @@ class WeatherApi {
             val scale = Math.pow(10.0, places.toDouble())
             return Math.round(value * scale) / scale
         }
+
+        fun sendPressureToServer(pressure: Pressure, context: Context) {
+            try {
+                sendPressure(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        log("failure to send pressure data to server")
+                        if (InternalConfig.DEBUG) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    @Throws(IOException::class)
+                    override fun onResponse(call: Call, response: Response) {
+                        if (response.isSuccessful) {
+                            // sent well
+                            log("sent pressure successfully");
+                        } else {
+                            log(response.message())
+                        }
+                    }
+                }, pressure, Installation.id(context), Installation.getID(context))
+            } catch (ioe: IOException) {
+                ioe.printStackTrace()
+            }
+        }
+
+        fun sendTemperatureToServer(temperature: Temperature, context: Context) {
+            try {
+                sendTemperature(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        InternalConfig.log("failure to send temperature data to server")
+                        if (InternalConfig.DEBUG) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    @Throws(IOException::class)
+                    override fun onResponse(call: Call, response: Response) {
+                        if (response.isSuccessful) {
+                            // sent well
+                            InternalConfig.log("sent temperature successfully");
+                        } else {
+                            InternalConfig.log(response.message())
+                        }
+                    }
+                },temperature, Installation.id(context), Installation.getID(context))
+            } catch (ioe: IOException) {
+                ioe.printStackTrace()
+            }
+
+        }
+
+        fun sendLightToServer(light: Light, context: Context) {
+            try {
+                sendLight(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        InternalConfig.log("failure to send light data to server")
+                        if (InternalConfig.DEBUG) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    @Throws(IOException::class)
+                    override fun onResponse(call: Call, response: Response) {
+                        if (response.isSuccessful) {
+                            // sent well
+                        } else {
+                            InternalConfig.log(response.message())
+                        }
+                    }
+                },light, Installation.id(context), Installation.getID(context))
+            } catch (ioe: IOException) {
+                ioe.printStackTrace()
+            }
+
+        }
+
+        fun sendHumidityToServer(humidity: Humidity, context: Context) {
+            try {
+                sendHumidity(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        InternalConfig.log("failure to send humidity data to server")
+                        if (InternalConfig.DEBUG) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    @Throws(IOException::class)
+                    override fun onResponse(call: Call, response: Response) {
+                        if (response.isSuccessful) {
+                            InternalConfig.log("sent humidity successfully");
+                        } else {
+                            InternalConfig.log(response.message())
+                        }
+                    }
+                }, humidity, Installation.id(context), Installation.getID(context))
+            } catch (ioe: IOException) {
+                ioe.printStackTrace()
+            }
+        }
+
 
         @Throws(IOException::class)
         fun sendPressure(callback: Callback, pressure: Pressure, installId: String, deviceId: String): Call? {
@@ -33,7 +141,7 @@ class WeatherApi {
 
                 val jsonCondition = JSONObject()
                 jsonCondition.put("latitude", roundAvoid(pressure.latitudeVal, 2))
-                jsonCondition.put("longitude", roundAvoid(pressure.longitudeVal,2))
+                jsonCondition.put("longitude", roundAvoid(pressure.longitudeVal, 2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", pressure.timeVal)
@@ -74,8 +182,8 @@ class WeatherApi {
             try {
 
                 val jsonCondition = JSONObject()
-                jsonCondition.put("latitude", roundAvoid(humidity.latitudeVal,2))
-                jsonCondition.put("longitude", roundAvoid(humidity.longitudeVal,2))
+                jsonCondition.put("latitude", roundAvoid(humidity.latitudeVal, 2))
+                jsonCondition.put("longitude", roundAvoid(humidity.longitudeVal, 2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", humidity.timeVal)
@@ -116,8 +224,8 @@ class WeatherApi {
             try {
 
                 val jsonCondition = JSONObject()
-                jsonCondition.put("latitude", roundAvoid(temperature.latitudeVal,2))
-                jsonCondition.put("longitude", roundAvoid(temperature.longitudeVal,2))
+                jsonCondition.put("latitude", roundAvoid(temperature.latitudeVal, 2))
+                jsonCondition.put("longitude", roundAvoid(temperature.longitudeVal, 2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", temperature.timeVal)
@@ -158,8 +266,8 @@ class WeatherApi {
             try {
 
                 val jsonCondition = JSONObject()
-                jsonCondition.put("latitude", roundAvoid(light.latitudeVal,2))
-                jsonCondition.put("longitude", roundAvoid(light.longitudeVal,2))
+                jsonCondition.put("latitude", roundAvoid(light.latitudeVal, 2))
+                jsonCondition.put("longitude", roundAvoid(light.longitudeVal, 2))
                 jsonCondition.put("install_id", installId)
                 jsonCondition.put("device_id", deviceId)
                 jsonCondition.put("time", light.timeVal)
@@ -181,9 +289,6 @@ class WeatherApi {
             }
 
             return null
-
         }
-
-
     }
 }

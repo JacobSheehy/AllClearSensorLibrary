@@ -23,6 +23,11 @@ class FileUtil {
             return !(file == null || !file.exists())
         }
 
+        fun cleanAndSave(context: Context, fileName: String, fileContents: String) {
+            cleanOldFile(context, fileName)
+            saveFile(context, fileName, fileContents)
+        }
+
         fun cleanOldFile(context: Context, fileName: String) {
             log("running cleanoldfile");
             if(!fileExists(context, fileName)) {
