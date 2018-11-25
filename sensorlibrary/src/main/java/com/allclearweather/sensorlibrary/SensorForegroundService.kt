@@ -375,7 +375,7 @@ class SensorForegroundService : Service(), SensorEventListener, GoogleApiClient.
         intentAction.`package` = applicationContext.packageName
 
         intentAction.putExtra("fromSensorNotification", true)
-        val pendingIntent = PendingIntent.getBroadcast(this, notificationRequestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val pendingIntent = PendingIntent.getBroadcast(this, notificationRequestCode, intentAction, PendingIntent.FLAG_UPDATE_CURRENT)
 
         val messageContent = prepareMessageContent()
 
