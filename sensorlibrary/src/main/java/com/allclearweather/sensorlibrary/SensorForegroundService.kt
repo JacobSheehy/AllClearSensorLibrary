@@ -317,17 +317,20 @@ class SensorForegroundService : Service(), SensorEventListener, GoogleApiClient.
                     startActivity(Intent.createChooser(sharingIntent, getString(R.string.viewLightData)))
                     return START_NOT_STICKY
                 } else -> {
-                    processServiceStartForDataCollection(intent)
+                    processServiceStartForDataCollection()
                     return START_STICKY
                 }
             }
         }
 
         stopForeground(true)
+
+
+
         return START_NOT_STICKY
     }
 
-    private fun processServiceStartForDataCollection(intent: Intent) {
+    private fun processServiceStartForDataCollection() {
         mGoogleApiClient = GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
@@ -343,7 +346,7 @@ class SensorForegroundService : Service(), SensorEventListener, GoogleApiClient.
 
         InternalConfig.log("onstartcommand of sensorforegroundservice, is running? $isRunning")
 
-        prepareAndSendNotification(intent)
+        prepareAndSendNotification()
 
         startForegroundAndSensorData()
     }
@@ -363,7 +366,7 @@ class SensorForegroundService : Service(), SensorEventListener, GoogleApiClient.
         }
     }
 
-    private fun prepareAndSendNotification(intent: Intent) {
+    private fun prepareAndSendNotification() {
         val receiverAction = applicationContext.packageName + ".SERVICE_FOREGROUND_NOTIFICATION"
         InternalConfig.log("sensorforegroundservice receiveraction=$receiverAction")
         // No need for Class definition in the constructor.
